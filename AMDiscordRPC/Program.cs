@@ -8,6 +8,7 @@ using System.Web;
 using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
 using FlaUI.Core.AutomationElements;
+using FlaUI.UIA3.Converters;
 
 namespace AMDiscordRPC
 {
@@ -17,6 +18,8 @@ namespace AMDiscordRPC
         public static HttpClient hclient = new HttpClient();
         public static FlaUI.Core.Application AppleMusic;
         public static bool AMAttached;
+        public static string localizedPlay;
+
         static void Main(string[] args)
         {
             InitializeDiscordRPC();
@@ -24,7 +27,7 @@ namespace AMDiscordRPC
             AMSongDataEvent.SongChanged += async (sender, x) =>
              {
                  Console.WriteLine($"Song: {x.SongName}\nArtist and Album: {x.ArtistandAlbumName}");
-                 var image = await FetchiTunes(HttpUtility.UrlEncode(x.ArtistandAlbumName.Replace("—", "-")));
+                 string[] resp = await FetchiTunes(HttpUtility.UrlEncode(x.ArtistandAlbumName.Replace("—", "-") + $" {x.SongName}"));
                  client.SetPresence(new RichPresence()
                  {
                      Type = ActivityType.Listening,
@@ -32,8 +35,12 @@ namespace AMDiscordRPC
                      State = x.ArtistandAlbumName.Split('—')[0],
                      Assets = new Assets()
                      {
-                         LargeImageKey = image,
+                         LargeImageKey = (resp.Length > 0) ? resp[0] : "",
                          LargeImageText = x.ArtistandAlbumName.Split('—')[1],
+                     },
+                     Buttons = new DiscordRPC.Button[]
+                     {
+                         new DiscordRPC.Button() { Label = "Listen on Apple Music", Url = (resp.Length > 0) ? resp[1].Replace("https://", "music://") : "music://music.apple.com/home"}
                      }
                  });
              };
@@ -58,23 +65,8 @@ namespace AMDiscordRPC
             {
                 Console.WriteLine("Apple Music not found", e.Message);
                 AMAttached = false;
-                ResetPresenceIdle();
+                client.ClearPresence();
             }
-        }
-
-        static void ResetPresenceIdle()
-        {
-            client.SetPresence(new RichPresence()
-            {
-                Type = ActivityType.Playing,
-                Details = "Apple Music",
-                State = "Idle",
-                Assets = new Assets()
-                {
-                    LargeImageKey = "",
-                    LargeImageText = "Apple Music",
-                }
-            });
         }
 
         /* I realized we don't need Last.fm API to be here, bc we are making Apple Music RPC aren't we? so i decided to just use iTunes and go on.
@@ -113,35 +105,37 @@ namespace AMDiscordRPC
          }
         */
 
-        static async Task<String> FetchiTunes(string ArtistAndAlbum)
+        static async Task<String[]> FetchiTunes(string songDetails)
         {
             try
             {
-                var iTunesReq = await hclient.GetAsync($"https://itunes.apple.com/search?term={ArtistAndAlbum}&limit=1&entity=song");
+                //idk why but sometimes when you search as "Artist - Album Track" and if Album and Track named same it returns random song from album
+                //ex: "Poppy - Negative Spaces negative spaces" Returns "Poppy - New Way Out" as a track link
+                var iTunesReq = await hclient.GetAsync($"https://itunes.apple.com/search?term={songDetails}&limit=1&entity=song");
                 if (iTunesReq.IsSuccessStatusCode)
                 {
                     dynamic imageRes = JObject.Parse(await iTunesReq.Content.ReadAsStringAsync());
                     if (imageRes["resultCount"] != 0)
                     {
-                        var image = imageRes["results"][0]["artworkUrl100"].ToString();
-                        return image;
+                        string[] res = {imageRes["results"][0]["artworkUrl100"].ToString(), imageRes["results"][0]["trackViewUrl"].ToString() };
+                        return res;
                     }
                     else
                     {
                         Console.WriteLine("iTunes no image found");
-                        return string.Empty;
+                        return Array.Empty<string>();
                     }
                 }
                 else
                 {
                     Console.WriteLine("iTunes request failed");
-                    return string.Empty;
+                    return Array.Empty<string>();
                 }
             }
             catch (Exception e)
             {
                 Console.WriteLine("iTunes Exception", e.Message);
-                return string.Empty;
+                return Array.Empty<string>();
             }
         }
 
@@ -152,6 +146,8 @@ namespace AMDiscordRPC
                 var playingStatus = false;
                 AutomationElement parent = null;
                 AutomationElement[] listeningInfo = null;
+                AutomationElement playButton = null;
+                AutomationElement slider = null;
 
                 while (!playingStatus)
                 {
@@ -173,21 +169,29 @@ namespace AMDiscordRPC
                     try
                     {
                         var window = AppleMusic.GetMainWindow(automation);
-                        parent = window.FindFirstChild(cf => cf.ByClassName("Microsoft.UI.Content.DesktopChildSiteBridge")).FindFirstChild().FindFirstChild().FindFirstChild(cf => cf.ByAutomationId("TransportBar")).FindFirstChild(cf => cf.ByAutomationId("LCD"));
-                        listeningInfo = parent.FindAllChildren().Where(x => (x.AutomationId == "myScrollViewer")).ToArray();
+                        parent = window.FindFirstChild(cf => cf.ByClassName("Microsoft.UI.Content.DesktopChildSiteBridge")).FindFirstChild().FindFirstChild().FindFirstChild(cf => cf.ByAutomationId("TransportBar"));
+                        listeningInfo = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindAllChildren().Where(x => (x.AutomationId == "myScrollViewer")).ToArray();
+                        playButton = parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"));
+                        slider = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindFirstChild(cf => cf.ByAutomationId("LCDScrubber"));
                         playingStatus = true;
                     }
                     catch (Exception e)
                     {
+                        if (parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"))?.Name != null && localizedPlay == null)
+                        {
+                            playButton = parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"));
+                            localizedPlay = playButton.Name;
+                        }
                         Console.WriteLine(e.Message);
                     }
+                    Thread.Sleep(50);
                 }
-
 
                 if (AMAttached)
                 {
                     string previousSong = string.Empty;
                     string previousArtistAlbum = string.Empty;
+                    bool resetStatus = false;
 
                     while (true)
                     {
@@ -196,17 +200,35 @@ namespace AMDiscordRPC
                             try
                             {
                                 var currentSong = listeningInfo[0].Name;
-                                var currentArtistAlbum = listeningInfo[1]?.Name;
+                                var currentArtistAlbum = listeningInfo[1].Name;
                                 var dashSplit = listeningInfo[1].Name.Split('-');
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
 
                                 if (currentSong != previousSong || currentArtistAlbum != previousArtistAlbum)
                                 {
+                                    // sometimes discord doesn't register rich presence idk why i tried everything...
                                     AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum));
                                     previousArtistAlbum = currentArtistAlbum;
                                     previousSong = currentSong;
                                 }
 
+                                if (localizedPlay == null && playButton?.Name == "Play")
+                                {
+                                    localizedPlay = playButton?.Name;
+                                    client.ClearPresence();
+                                    resetStatus = true;
+                                }
+
+                                if (playButton?.Name != null && localizedPlay != null && localizedPlay == playButton?.Name)
+                                {
+                                    client.ClearPresence();
+                                    resetStatus = true;
+                                }
+                                else if (resetStatus == true && playButton?.Name != null && localizedPlay != null && localizedPlay != playButton?.Name)
+                                {
+                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum));
+                                    resetStatus = false;
+                                }
                             }
                             catch (Exception e)
                             {
@@ -217,7 +239,7 @@ namespace AMDiscordRPC
                         {
                             Console.WriteLine("Process Closed");
                             AMAttached = false;
-                            ResetPresenceIdle();
+                            client.ClearPresence();
                             while (!AMAttached)
                             {
                                 AttachToAppleMusic();
