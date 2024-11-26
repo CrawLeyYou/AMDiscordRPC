@@ -28,15 +28,16 @@ namespace AMDiscordRPC
              {
                  Console.WriteLine($"Song: {x.SongName}\nArtist and Album: {x.ArtistandAlbumName}");
                  string[] resp = await FetchiTunes(HttpUtility.UrlEncode(x.ArtistandAlbumName.Replace("—", "-") + $" {x.SongName}"));
+                 bool isMV = (x.ArtistandAlbumName.Split('—').Length <= 1) ? true : false;
                  client.SetPresence(new RichPresence()
                  {
                      Type = ActivityType.Listening,
                      Details = x.SongName,
-                     State = x.ArtistandAlbumName.Split('—')[0],
+                     State = (isMV) ? x.ArtistandAlbumName : x.ArtistandAlbumName.Split('—')[0],
                      Assets = new Assets()
                      {
                          LargeImageKey = (resp.Length > 0) ? resp[0] : "",
-                         LargeImageText = x.ArtistandAlbumName.Split('—')[1],
+                         LargeImageText = (isMV) ? x.ArtistandAlbumName : x.ArtistandAlbumName.Split('—')[0],
                      },
                      Buttons = new DiscordRPC.Button[]
                      {
@@ -59,7 +60,7 @@ namespace AMDiscordRPC
             {
                 AppleMusic = FlaUI.Core.Application.Attach("AppleMusic.exe");
                 AMAttached = true;
-                Console.WriteLine("Attached");
+                Console.WriteLine($"Attached to {AppleMusic.ProcessId}");
             }
             catch (Exception e)
             {
@@ -168,7 +169,19 @@ namespace AMDiscordRPC
 
                     try
                     {
-                        var window = AppleMusic.GetMainWindow(automation);
+                        Window window = null;
+                        var windows = AppleMusic.GetAllTopLevelWindows(automation);
+                        if (windows.Length > 1)
+                        {
+                            for (var i = 0; i < windows.Length; i++)
+                            {
+                                if (windows[i].Name == "Apple Music") window = windows[i];
+                            }
+                        }
+                        else if (windows.Length == 1)
+                        {
+                            window = windows[0];
+                        }
                         parent = window.FindFirstChild(cf => cf.ByClassName("Microsoft.UI.Content.DesktopChildSiteBridge")).FindFirstChild().FindFirstChild().FindFirstChild(cf => cf.ByAutomationId("TransportBar"));
                         listeningInfo = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindAllChildren().Where(x => (x.AutomationId == "myScrollViewer")).ToArray();
                         playButton = parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"));
