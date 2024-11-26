@@ -37,7 +37,7 @@ namespace AMDiscordRPC
                      Assets = new Assets()
                      {
                          LargeImageKey = (resp.Length > 0) ? resp[0] : "",
-                         LargeImageText = (isMV) ? x.ArtistandAlbumName : x.ArtistandAlbumName.Split('—')[0],
+                         LargeImageText = (isMV) ? x.ArtistandAlbumName : x.ArtistandAlbumName.Split('—')[1],
                      },
                      Buttons = new DiscordRPC.Button[]
                      {
