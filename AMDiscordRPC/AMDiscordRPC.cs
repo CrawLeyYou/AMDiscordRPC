@@ -10,11 +10,7 @@ using System.Threading.Tasks;
 using FlaUI.Core.AutomationElements;
 using log4net;
 using System.Reflection;
-using System.Xml;
 using log4net.Config;
-using System.IO;
-using FlaUI.Core.Identifiers;
-using FlaUI.Core.Patterns.Infrastructure;
 
 namespace AMDiscordRPC
 {
@@ -35,7 +31,7 @@ namespace AMDiscordRPC
             AttachToAppleMusic();
             AMSongDataEvent.SongChanged += async (sender, x) =>
              {
-                 log.Info($"Song: {x.SongName} & Artist and Album: {x.ArtistandAlbumName}");
+                 log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
                  string[] resp = await FetchiTunes(HttpUtility.UrlEncode(x.ArtistandAlbumName.Replace("—", "-") + $" {x.SongName}"));
                  bool isMV = (x.ArtistandAlbumName.Split('—').Length <= 1) ? true : false;
                  client.SetPresence(new RichPresence()
@@ -46,7 +42,7 @@ namespace AMDiscordRPC
                      Assets = new Assets()
                      {
                          LargeImageKey = (resp.Length > 0) ? resp[0] : "",
-                         LargeImageText = (isMV) ? x.ArtistandAlbumName : x.ArtistandAlbumName.Split('—')[1],
+                         LargeImageText = (isMV) ? resp[2] : x.ArtistandAlbumName.Split('—')[1],
                      },
                      Buttons = new DiscordRPC.Button[]
                      {
@@ -135,7 +131,7 @@ namespace AMDiscordRPC
                     dynamic imageRes = JObject.Parse(await iTunesReq.Content.ReadAsStringAsync());
                     if (imageRes["resultCount"] != 0)
                     {
-                        string[] res = {imageRes["results"][0]["artworkUrl100"].ToString(), imageRes["results"][0]["trackViewUrl"].ToString() };
+                        string[] res = {imageRes["results"][0]["artworkUrl100"].ToString(), imageRes["results"][0]["trackViewUrl"].ToString(), imageRes["results"][0]["collectionName"].ToString() };
                         return res;
                     }
                     else
@@ -157,7 +153,7 @@ namespace AMDiscordRPC
             }
         }
 
-        static async void AMEvent()
+        static void AMEvent()
         {
             using (var automation = new UIA3Automation())
             {
