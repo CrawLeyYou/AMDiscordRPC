@@ -8,25 +8,34 @@ using System.Web;
 using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
 using FlaUI.Core.AutomationElements;
-using FlaUI.UIA3.Converters;
+using log4net;
+using System.Reflection;
+using System.Xml;
+using log4net.Config;
+using System.IO;
+using FlaUI.Core.Identifiers;
+using FlaUI.Core.Patterns.Infrastructure;
 
 namespace AMDiscordRPC
 {
-    internal class Program
+    internal class AMDiscordRPC
     {
         public static DiscordRpcClient client;
         public static HttpClient hclient = new HttpClient();
         public static FlaUI.Core.Application AppleMusic;
         public static bool AMAttached;
         public static string localizedPlay;
+        public static readonly ILog log = LogManager.GetLogger(typeof(AMDiscordRPC));
+        public static readonly Assembly assembly = Assembly.GetExecutingAssembly();
 
         static void Main(string[] args)
         {
+            ConfigureLogger();
             InitializeDiscordRPC();
             AttachToAppleMusic();
             AMSongDataEvent.SongChanged += async (sender, x) =>
              {
-                 Console.WriteLine($"Song: {x.SongName}\nArtist and Album: {x.ArtistandAlbumName}");
+                 log.Info($"Song: {x.SongName} & Artist and Album: {x.ArtistandAlbumName}");
                  string[] resp = await FetchiTunes(HttpUtility.UrlEncode(x.ArtistandAlbumName.Replace("—", "-") + $" {x.SongName}"));
                  bool isMV = (x.ArtistandAlbumName.Split('—').Length <= 1) ? true : false;
                  client.SetPresence(new RichPresence()
@@ -60,13 +69,21 @@ namespace AMDiscordRPC
             {
                 AppleMusic = FlaUI.Core.Application.Attach("AppleMusic.exe");
                 AMAttached = true;
-                Console.WriteLine($"Attached to {AppleMusic.ProcessId}");
+                log.Info($"Attached to Process Id: {AppleMusic.ProcessId}");
             }
             catch (Exception e)
             {
-                Console.WriteLine("Apple Music not found", e.Message);
+                log.Debug($"Apple Music not found: {e.Message}");
                 AMAttached = false;
                 client.ClearPresence();
+            }
+        }
+
+        static void ConfigureLogger()
+        {
+            using (var stream = assembly.GetManifestResourceStream(typeof(AMDiscordRPC), "log4netconf.xml"))
+            {
+                XmlConfigurator.Configure(stream);
             }
         }
 
@@ -88,19 +105,19 @@ namespace AMDiscordRPC
                      }
                      else
                      {
-                         Console.WriteLine("Last.fm no image found");
+                         log.Info("Last.fm no image found");
                          return await FetchiTunes(encodedAlbumAndArtist);
                      }
                  }
                  else
                  {
-                     Console.WriteLine("Last.fm request failed");
+                     log.Info("Last.fm request failed");
                      return await FetchiTunes(encodedAlbumAndArtist);
                  }
              }
              catch (Exception e)
              {
-                 Console.WriteLine("last.fm Exception", e.Message);
+                 log.Info("last.fm Exception", e.Message);
                  return await FetchiTunes(encodedAlbumAndArtist);
              }
          }
@@ -123,19 +140,19 @@ namespace AMDiscordRPC
                     }
                     else
                     {
-                        Console.WriteLine("iTunes no image found");
+                        log.Warn("iTunes no image found");
                         return Array.Empty<string>();
                     }
                 }
                 else
                 {
-                    Console.WriteLine("iTunes request failed");
+                    log.Warn("iTunes request failed");
                     return Array.Empty<string>();
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("iTunes Exception", e.Message);
+                log.Error($"iTunes Exception {e.Message}");
                 return Array.Empty<string>();
             }
         }
@@ -183,19 +200,25 @@ namespace AMDiscordRPC
                             window = windows[0];
                         }
                         parent = window.FindFirstChild(cf => cf.ByClassName("Microsoft.UI.Content.DesktopChildSiteBridge")).FindFirstChild().FindFirstChild().FindFirstChild(cf => cf.ByAutomationId("TransportBar"));
-                        listeningInfo = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindAllChildren().Where(x => (x.AutomationId == "myScrollViewer")).ToArray();
                         playButton = parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"));
+                        listeningInfo = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindAllChildren().Where(x => (x.AutomationId == "myScrollViewer")).ToArray();
                         slider = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindFirstChild(cf => cf.ByAutomationId("LCDScrubber"));
                         playingStatus = true;
                     }
                     catch (Exception e)
                     {
-                        if (parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"))?.Name != null && localizedPlay == null)
+                        try
                         {
-                            playButton = parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"));
-                            localizedPlay = playButton.Name;
+                            if (localizedPlay == null && playButton?.Name != null)
+                            {
+                                localizedPlay = playButton.Name;
+                            }
                         }
-                        Console.WriteLine(e.Message);
+                        catch (Exception eX)
+                        {
+                            log.Error(eX.Message);
+                        }
+                        log.Debug(e.Message);
                     }
                     Thread.Sleep(50);
                 }
@@ -245,12 +268,12 @@ namespace AMDiscordRPC
                             }
                             catch (Exception e)
                             {
-                                Console.WriteLine(e.Message);
+                                log.Error(e.Message);
                             }
                         }
                         else
                         {
-                            Console.WriteLine("Process Closed");
+                            log.Info("Process Closed");
                             AMAttached = false;
                             client.ClearPresence();
                             while (!AMAttached)
