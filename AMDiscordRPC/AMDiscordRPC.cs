@@ -11,6 +11,7 @@ using FlaUI.Core.AutomationElements;
 using log4net;
 using System.Reflection;
 using log4net.Config;
+using FlaUI.Core.Definitions;
 
 namespace AMDiscordRPC
 {
@@ -174,7 +175,7 @@ namespace AMDiscordRPC
                             break;
                         }
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         AMAttached = false;
                         break;
@@ -197,7 +198,7 @@ namespace AMDiscordRPC
                         }
                         parent = window.FindFirstChild(cf => cf.ByClassName("Microsoft.UI.Content.DesktopChildSiteBridge")).FindFirstChild().FindFirstChild().FindFirstChild(cf => cf.ByAutomationId("TransportBar"));
                         playButton = parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"));
-                        listeningInfo = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindAllChildren().Where(x => (x.AutomationId == "myScrollViewer")).ToArray();
+                        listeningInfo = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindAllChildren().Where(x => (x.ControlType == ControlType.Pane)).ToArray();
                         slider = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindFirstChild(cf => cf.ByAutomationId("LCDScrubber"));
                         playingStatus = true;
                     }
