@@ -1,0 +1,30 @@
+name: Build .NET Framework
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: ["read", "write"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v2
+    - name: Restore NuGet Packages
+      run: nuget restore AMDiscordRPC.sln
+    - name: Build
+      run: msbuild AMDiscordRPC.sln -property:Configuration=Release -property:platform="x64"
+    - name: Zip
+      run: powershell Compress-Archive -Path ./AMDiscordRPC/bin/x64/Release -DestinationPath Release.zip
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.run_id }}
+        name: Release BuildID-${{ github.run_id }}
+        files: |
+          Release.zip

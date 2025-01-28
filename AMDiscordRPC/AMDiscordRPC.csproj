@@ -164,6 +164,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AMDiscordRPC.cs" />
+    <Compile Include="AppleMusic.cs" />
+    <Compile Include="Discord.cs" />
+    <Compile Include="Globals.cs" />
+    <Compile Include="Covers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
