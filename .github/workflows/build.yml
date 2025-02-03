@@ -8,13 +8,19 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: ["read", "write"]
+      contents: write
     steps:
     - uses: actions/checkout@v4
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
     - name: Setup NuGet
       uses: nuget/setup-nuget@v2
+    - name: Download DiscordRPC Package
+      run: mkdir "${{ runner.temp }}/local-packages" && powershell Invoke-WebRequest "https://github.com/Lachee/discord-rpc-csharp/releases/download/v1.3.0/DiscordRichPresence.1.3.0.28.nupkg" -OutFile "${{ runner.temp }}/local-packages/DiscordRichPresence.1.3.0.28.nupkg" && powershell Install-PackageProvider -Name NuGet -Force
+    - name: Create Trusted Repo 
+      run: powershell Register-PackageSource -Name LocalPackages -Location "${{ runner.temp }}/local-packages/" -ProviderName NuGet -Trusted
+    - name: Install DiscordRPC Package
+      run: powershell Install-Package -Name DiscordRichPresence -SkipDependencies -Source LocalPackages -Force
     - name: Restore NuGet Packages
       run: nuget restore AMDiscordRPC.sln
     - name: Build
@@ -28,3 +34,5 @@ jobs:
         name: Release BuildID-${{ github.run_id }}
         files: |
           Release.zip
+    - name: Clean PackageSource
+      run: powershell Unregister-PackageSource -Location "${{ runner.temp }}\local-packages\" -Force
