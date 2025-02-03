@@ -35,4 +35,4 @@ jobs:
         files: |
           Release.zip
     - name: Clean PackageSource
-      uses: powershell Unregister-PackageSource -Location "${{ runner.temp }}/local-packages/" -Force
+      run: powershell Unregister-PackageSource -Location "${{ runner.temp }}/local-packages/" -Force
