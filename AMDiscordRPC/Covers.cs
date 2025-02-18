@@ -1,7 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using AngleSharp.Dom;
+using AngleSharp;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Threading.Tasks;
 using static AMDiscordRPC.Globals;
+using AngleSharp.Html.Dom;
+using System.Web;
 
 namespace AMDiscordRPC
 {
@@ -40,7 +44,34 @@ namespace AMDiscordRPC
                 return Array.Empty<string>();
             }
         }
-
+        
+        /* Discord doesn't support M3U8 at this time, but when M3U8 support comes we gonna have AnimatedCovers
+         * 
+        public static async Task<String> CheckAnimatedCover(string url, string songDetails)
+        {
+            try
+            {
+                var appleMusicDom = await hclient.GetAsync(url);
+                if (appleMusicDom.IsSuccessStatusCode)
+                {
+                    string DOMasAString = await appleMusicDom.Content.ReadAsStringAsync();
+                    IHtmlDocument document = parser.ParseDocument(DOMasAString);
+                    return document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0];
+                }
+                else
+                {
+                    log.Error($"Apple Music request failed");
+                    return null;
+                }
+            }
+            catch (Exception e)
+            {
+                log.Error($"Apple Music fetch exception: {e.Message}");
+                return null;
+            }
+        }
+        */
+        
         /* I realized we don't need Last.fm API to be here, bc we are making Apple Music RPC aren't we? so i decided to just use iTunes and go on.
         * might add later for the situation where iTunes api is down.
 

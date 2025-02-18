@@ -1,5 +1,4 @@
-﻿using DiscordRPC;
-using FlaUI.Core.AutomationElements;
+﻿using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.UIA3;
 using System;
@@ -24,21 +23,7 @@ namespace AMDiscordRPC
              {
                  log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
                  string[] resp = await FetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
-                 client.SetPresence(new RichPresence()
-                 {
-                     Type = ActivityType.Listening,
-                     Details = ConvertToValidString(x.SongName),
-                     State = (x.isMV) ? x.ArtistandAlbumName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[0]),
-                     Assets = new Assets()
-                     {
-                         LargeImageKey = (resp.Length > 0) ? resp[0] : "",
-                         LargeImageText = (x.isMV) ? resp[2] : ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]),
-                     },
-                     Buttons = new DiscordRPC.Button[]
-                     {
-                         new DiscordRPC.Button() { Label = "Listen on Apple Music", Url = (resp.Length > 0) ? resp[1].Replace("https://", "music://") : "music://music.apple.com/home"}
-                     }
-                 });
+                 SetPresence(x, resp);
              };
             AMEvent();
         }
@@ -114,6 +99,7 @@ namespace AMDiscordRPC
                     string previousSong = string.Empty;
                     string previousArtistAlbum = string.Empty;
                     bool resetStatus = false;
+                    double oldValue = 0;
 
                     while (true)
                     {
@@ -124,12 +110,17 @@ namespace AMDiscordRPC
                                 var currentSong = listeningInfo[0].Name;
                                 var currentArtistAlbum = listeningInfo[1].Name;
                                 var dashSplit = listeningInfo[1].Name.Split('-');
+                                if (oldValue == 0) oldValue = slider.AsSlider().Value;
+                                DateTime currentTime = DateTime.UtcNow;
+                                DateTime startTime = currentTime.Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value));
+                                DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value));
+
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
 
-                                if (currentSong != previousSong || currentArtistAlbum != previousArtistAlbum)
+                                if (currentSong != previousSong && slider.AsSlider().Maximum != 0 || currentArtistAlbum != previousArtistAlbum && slider.AsSlider().Maximum != 0)
                                 {
                                     // sometimes discord doesn't register rich presence idk why i tried everything...
-                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1));
+                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime));
                                     previousArtistAlbum = currentArtistAlbum;
                                     previousSong = currentSong;
                                 }
@@ -148,8 +139,18 @@ namespace AMDiscordRPC
                                 }
                                 else if (resetStatus == true && playButton?.Name != null && localizedPlay != null && localizedPlay != playButton?.Name)
                                 {
-                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1));
+                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime));
                                     resetStatus = false;
+                                }
+
+                                if (oldValue <= slider.AsSlider().Value && (slider.AsSlider().Value - oldValue) <= 1 && resetStatus == false)
+                                {
+                                    oldValue = slider.AsSlider().Value;
+                                }
+                                else if (resetStatus == false && oldValue != 0)
+                                {
+                                    ChangeTimestamps(startTime, endTime);
+                                    oldValue = slider.AsSlider().Value;
                                 }
                             }
                             catch (Exception e)

@@ -1,4 +1,5 @@
-﻿using DiscordRPC;
+﻿using AngleSharp.Html.Parser;
+using DiscordRPC;
 using DiscordRPC.Helper;
 using log4net;
 using log4net.Config;
@@ -18,6 +19,8 @@ namespace AMDiscordRPC
         public static string localizedPlay;
         public static readonly ILog log = LogManager.GetLogger(typeof(AMDiscordRPC));
         public static readonly Assembly assembly = Assembly.GetExecutingAssembly();
+        public static HtmlParser parser = new HtmlParser();
+        public static RichPresence oldData = new RichPresence();
 
         public static void ConfigureLogger()
         {
@@ -38,11 +41,10 @@ namespace AMDiscordRPC
 
         public static string ConvertToValidString(string data)
         {
-            data.Replace("—", "-");
-            if (!data.WithinLength(128, Encoding.UTF8))
+            if (!data.WithinLength(125, Encoding.UTF8))
             {
                 byte[] byteArr = Encoding.UTF8.GetBytes(data);
-                Array.Resize(ref byteArr, 128);
+                Array.Resize(ref byteArr, 125);
                 data = Encoding.UTF8.GetString(byteArr).TrimEnd('�');
             }
             return data;
@@ -53,12 +55,16 @@ namespace AMDiscordRPC
             public string SongName { get; set; }
             public string ArtistandAlbumName { get; set; }
             public bool isMV { get; set;}
+            public DateTime startTime { get; set; }
+            public DateTime endTime { get; set; }
 
-            public SongData(string songName, string artistandAlbumName, bool isMVl)
+            public SongData(string songName, string artistandAlbumName, bool isMVl, DateTime startTime, DateTime endTime)
             {
                 SongName = songName;
                 ArtistandAlbumName = artistandAlbumName;
                 isMV = isMVl;
+                this.startTime = startTime;
+                this.endTime = endTime;
             }
         }
     }
