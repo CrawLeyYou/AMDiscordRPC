@@ -114,15 +114,25 @@ namespace AMDiscordRPC
                                 DateTime currentTime = DateTime.UtcNow;
                                 DateTime startTime = currentTime.Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value));
                                 DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value));
-
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
 
-                                if (currentSong != previousSong && slider.AsSlider().Maximum != 0 || currentArtistAlbum != previousArtistAlbum && slider.AsSlider().Maximum != 0)
+                                if (oldValue <= slider.AsSlider().Value && (slider.AsSlider().Value - oldValue) <= 1 && resetStatus == false)
+                                {
+                                    oldValue = slider.AsSlider().Value;
+                                }
+                                else if (resetStatus == false && slider.AsSlider().Maximum != 0 && oldValue != 0 && currentSong == previousSong && currentArtistAlbum == previousArtistAlbum)
+                                {
+                                    ChangeTimestamps(startTime, endTime);
+                                    oldValue = slider.AsSlider().Value;
+                                }
+
+                                if (currentSong != previousSong && slider.AsSlider().Maximum != 0 && endTime != startTime || currentArtistAlbum != previousArtistAlbum && slider.AsSlider().Maximum != 0 && endTime != startTime)
                                 {
                                     // sometimes discord doesn't register rich presence idk why i tried everything...
-                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime));
                                     previousArtistAlbum = currentArtistAlbum;
                                     previousSong = currentSong;
+                                    oldValue = 0;
+                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime));
                                 }
 
                                 if (localizedPlay == null && playButton?.Name == "Play")
@@ -137,20 +147,10 @@ namespace AMDiscordRPC
                                     client.ClearPresence();
                                     resetStatus = true;
                                 }
-                                else if (resetStatus == true && playButton?.Name != null && localizedPlay != null && localizedPlay != playButton?.Name)
-                                {
-                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime));
-                                    resetStatus = false;
-                                }
-
-                                if (oldValue <= slider.AsSlider().Value && (slider.AsSlider().Value - oldValue) <= 1 && resetStatus == false)
-                                {
-                                    oldValue = slider.AsSlider().Value;
-                                }
-                                else if (resetStatus == false && oldValue != 0)
+                                else if (resetStatus == true && playButton?.Name != null && localizedPlay != null && localizedPlay != playButton?.Name && slider.AsSlider().Maximum != 0)
                                 {
                                     ChangeTimestamps(startTime, endTime);
-                                    oldValue = slider.AsSlider().Value;
+                                    resetStatus = false;
                                 }
                             }
                             catch (Exception e)

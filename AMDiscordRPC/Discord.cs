@@ -16,17 +16,19 @@ namespace AMDiscordRPC
 
         public static void ChangeTimestamps(DateTime start = new DateTime(), DateTime end = new DateTime())
         {
+            log.Debug($"Timestamps {start}/{end}");
             oldData.Timestamps = new Timestamps()
             {
                 Start = (start != new DateTime()) ? start : oldData.Timestamps.Start,
                 End = (end != new DateTime()) ? end : oldData.Timestamps.End
             };
-
             client.SetPresence(oldData);
         }
 
         public static void SetPresence(SongData x, string[] resp)
         {
+            log.Debug($"Timestamps {x.startTime}/{x.endTime}");
+
             oldData = new RichPresence()
             {
                 Type = ActivityType.Listening,
