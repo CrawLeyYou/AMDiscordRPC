@@ -9,6 +9,7 @@ using static AMDiscordRPC.AppleMusic;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Covers;
+using FlaUI.Core.Logging;
 
 namespace AMDiscordRPC
 {
@@ -74,15 +75,17 @@ namespace AMDiscordRPC
                         playButton = parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"));
                         listeningInfo = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindAllChildren().Where(x => (x.ControlType == ControlType.Pane)).ToArray();
                         slider = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindFirstChild(cf => cf.ByAutomationId("LCDScrubber"));
+                        if (slider == null) throw new FieldAccessException("Slider not found");
                         playingStatus = true;
                     }
                     catch (Exception e)
                     {
                         try
                         {
-                            if (localizedPlay == null && playButton?.Name != null)
+                            if (localizedPlay == null && playButton?.Name != null && playButton?.IsEnabled == false)
                             {
                                 localizedPlay = playButton.Name;
+                                log.Debug($"Localized play found: {playButton.Name}");
                             }
                         }
                         catch (Exception eX)
@@ -112,13 +115,23 @@ namespace AMDiscordRPC
                                 var dashSplit = listeningInfo[1].Name.Split('-');
                                 if (oldValue == 0) oldValue = slider.AsSlider().Value;
                                 DateTime currentTime = DateTime.UtcNow;
-                                DateTime startTime = currentTime.Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value));
-                                DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value));
+                                DateTime startTime = currentTime.Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value + 1));
+                                DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value + 1));
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
 
-                                if (oldValue <= slider.AsSlider().Value && (slider.AsSlider().Value - oldValue) <= 1 && resetStatus == false)
+                                if (!playButton.IsEnabled && playButton?.Name != null && localizedPlay == null)
                                 {
-                                    oldValue = slider.AsSlider().Value;
+                                    log.Debug($"Localized play found: {playButton.Name}");
+                                    localizedPlay = playButton.Name;
+                                }
+
+                                if (oldValue <= slider.AsSlider().Value && (slider.AsSlider().Value - oldValue) <= 1 && !resetStatus)
+                                {
+                                    if ((slider.AsSlider().Value - oldValue) == 1 && localizedPlay == null && localizedStop == null)
+                                        localizedStop = playButton.Name;
+                                        log.Debug($"Localized stop found: {localizedStop}");
+                                    }
+                                    oldValue = slider.AsSlider().Value;                            
                                 }
                                 else if (resetStatus == false && slider.AsSlider().Maximum != 0 && oldValue != 0 && currentSong == previousSong && currentArtistAlbum == previousArtistAlbum)
                                 {
@@ -126,7 +139,7 @@ namespace AMDiscordRPC
                                     oldValue = slider.AsSlider().Value;
                                 }
 
-                                if (currentSong != previousSong && slider.AsSlider().Maximum != 0 && endTime != startTime || currentArtistAlbum != previousArtistAlbum && slider.AsSlider().Maximum != 0 && endTime != startTime)
+                                if (slider.AsSlider().Maximum != 0 && slider.AsSlider().Value != 0 && endTime != startTime && (currentSong != previousSong || currentArtistAlbum != previousArtistAlbum))
                                 {
                                     // sometimes discord doesn't register rich presence idk why i tried everything...
                                     previousArtistAlbum = currentArtistAlbum;
@@ -135,15 +148,9 @@ namespace AMDiscordRPC
                                     AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime));
                                 }
 
-                                if (localizedPlay == null && playButton?.Name == "Play")
+                                if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))
                                 {
-                                    localizedPlay = playButton?.Name;
-                                    client.ClearPresence();
-                                    resetStatus = true;
-                                }
-
-                                if (playButton?.Name != null && localizedPlay != null && localizedPlay == playButton?.Name)
-                                {
+                                    localizedPlay = playButton.Name;
                                     client.ClearPresence();
                                     resetStatus = true;
                                 }
@@ -172,7 +179,7 @@ namespace AMDiscordRPC
                             }
                             AMEvent();
                         }
-                        Thread.Sleep(50);
+                        Thread.Sleep(20);
                     }
                     if (!AMAttached & AppleMusicProc.HasExited != true)
                     {

@@ -17,6 +17,7 @@ namespace AMDiscordRPC
         public static FlaUI.Core.Application AppleMusicProc;
         public static bool AMAttached;
         public static string localizedPlay;
+        public static string localizedStop;
         public static readonly ILog log = LogManager.GetLogger(typeof(AMDiscordRPC));
         public static readonly Assembly assembly = Assembly.GetExecutingAssembly();
         public static HtmlParser parser = new HtmlParser();
