@@ -128,6 +128,7 @@ namespace AMDiscordRPC
                                 if (oldValue <= slider.AsSlider().Value && (slider.AsSlider().Value - oldValue) <= 1 && !resetStatus)
                                 {
                                     if ((slider.AsSlider().Value - oldValue) == 1 && localizedPlay == null && localizedStop == null)
+                                    {
                                         localizedStop = playButton.Name;
                                         log.Debug($"Localized stop found: {localizedStop}");
                                     }
