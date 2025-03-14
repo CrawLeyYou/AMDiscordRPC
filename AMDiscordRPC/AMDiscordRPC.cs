@@ -9,12 +9,12 @@ using static AMDiscordRPC.AppleMusic;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Covers;
-using FlaUI.Core.Logging;
 
 namespace AMDiscordRPC
 {
     internal class AMDiscordRPC
     {
+        private static string oldAlbumnArtist;
         static void Main(string[] args)
         {
             ConfigureLogger();
@@ -23,8 +23,16 @@ namespace AMDiscordRPC
             AMSongDataEvent.SongChanged += async (sender, x) =>
              {
                  log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
-                 string[] resp = await FetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
-                 SetPresence(x, resp);
+                 if (x.ArtistandAlbumName == oldAlbumnArtist && oldData.Assets.LargeImageKey != null)
+                 {
+                     SetPresence(x);
+                 }
+                 else
+                 {
+                     string[] resp = await FetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+                     SetPresence(x, resp);
+                     oldAlbumnArtist = x.ArtistandAlbumName;
+                 }
              };
             AMEvent();
         }
