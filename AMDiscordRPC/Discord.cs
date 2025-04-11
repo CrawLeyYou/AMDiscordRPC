@@ -70,6 +70,8 @@ namespace AMDiscordRPC
                 {
                     LargeImageKey = (resp.Length > 0) ? resp[0] : "",
                     LargeImageText = (x.isMV) ? resp[2] : ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]),
+                    SmallImageKey = (x.audioDetail == 0) ? "lossless" : (x.audioDetail == 1) ? "dolbysimplified" : null,
+                    SmallImageText = (x.audioDetail == 0) ? "Lossless" : (x.audioDetail == 1) ? "Dolby Atmos" : null,
                 },
                 Buttons = new Button[]
                      {

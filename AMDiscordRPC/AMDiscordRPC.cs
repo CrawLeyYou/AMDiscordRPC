@@ -44,6 +44,8 @@ namespace AMDiscordRPC
                 var playingStatus = false;
                 AutomationElement parent = null;
                 AutomationElement[] listeningInfo = null;
+                AutomationElement LCDInf = null;
+                AutomationElement audioBadge = null;
                 AutomationElement playButton = null;
                 AutomationElement slider = null;
 
@@ -81,8 +83,9 @@ namespace AMDiscordRPC
                         }
                         parent = window.FindFirstChild(cf => cf.ByClassName("Microsoft.UI.Content.DesktopChildSiteBridge")).FindFirstChild().FindFirstChild().FindFirstChild(cf => cf.ByAutomationId("TransportBar"));
                         playButton = parent.FindFirstChild(cf => cf.ByAutomationId("TransportControl_PlayPauseStop"));
-                        listeningInfo = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindAllChildren().Where(x => (x.ControlType == ControlType.Pane)).ToArray();
-                        slider = parent.FindFirstChild(cf => cf.ByAutomationId("LCD")).FindFirstChild(cf => cf.ByAutomationId("LCDScrubber"));
+                        LCDInf = parent.FindFirstChild(cf => cf.ByAutomationId("LCD"));
+                        listeningInfo = LCDInf.FindAllChildren().Where(x => (x.ControlType == ControlType.Pane)).ToArray();
+                        slider = LCDInf.FindFirstChild(cf => cf.ByAutomationId("LCDScrubber"));
                         if (slider == null) throw new FieldAccessException("Slider not found");
                         playingStatus = true;
                     }
@@ -109,6 +112,7 @@ namespace AMDiscordRPC
                 {
                     string previousSong = string.Empty;
                     string previousArtistAlbum = string.Empty;
+                    int audioStatus = 3;
                     bool resetStatus = false;
                     double oldValue = 0;
 
@@ -126,6 +130,7 @@ namespace AMDiscordRPC
                                 DateTime startTime = currentTime.Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value + 1));
                                 DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value + 1));
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
+                                audioBadge = LCDInf.FindFirstChild(cf => cf.ByAutomationId("AudioBadgeButton"));
 
                                 if (!playButton.IsEnabled && playButton?.Name != null && localizedPlay == null)
                                 {
@@ -153,8 +158,24 @@ namespace AMDiscordRPC
                                     // sometimes discord doesn't register rich presence idk why i tried everything...
                                     previousArtistAlbum = currentArtistAlbum;
                                     previousSong = currentSong;
+                                    if (audioBadge != null)
+                                    {
+                                        switch (audioBadge?.Name)
+                                        {
+                                            case "Lossless":
+                                                audioStatus = 0;
+                                                break;
+                                            case "Dolby Atmos":
+                                                audioStatus = 1;
+                                                break;
+                                            default:
+                                                audioStatus = 3;
+                                            break;
+                                        }
+                                    }
+                                    else audioStatus = 3;
                                     oldValue = 0;
-                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime));
+                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, audioStatus));
                                 }
 
                                 if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))

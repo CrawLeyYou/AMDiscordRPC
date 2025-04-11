@@ -58,14 +58,16 @@ namespace AMDiscordRPC
             public bool isMV { get; set;}
             public DateTime startTime { get; set; }
             public DateTime endTime { get; set; }
+            public int audioDetail { get; set; }
 
-            public SongData(string songName, string artistandAlbumName, bool isMVl, DateTime startTime, DateTime endTime)
+            public SongData(string songName, string artistandAlbumName, bool isMVl, DateTime startTime, DateTime endTime, int audioDetail)
             {
                 SongName = songName;
                 ArtistandAlbumName = artistandAlbumName;
                 isMV = isMVl;
                 this.startTime = startTime;
                 this.endTime = endTime;
+                this.audioDetail = audioDetail;
             }
         }
     }
