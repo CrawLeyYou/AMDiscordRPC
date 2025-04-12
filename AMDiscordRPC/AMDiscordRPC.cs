@@ -125,10 +125,11 @@ namespace AMDiscordRPC
                                 var currentSong = listeningInfo[0].Name;
                                 var currentArtistAlbum = listeningInfo[1].Name;
                                 var dashSplit = listeningInfo[1].Name.Split('-');
+                                var subractThis = TimeSpan.FromSeconds(slider.AsSlider().Value + 1);
                                 if (oldValue == 0) oldValue = slider.AsSlider().Value;
                                 DateTime currentTime = DateTime.UtcNow;
-                                DateTime startTime = currentTime.Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value + 1));
-                                DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(TimeSpan.FromSeconds(slider.AsSlider().Value + 1));
+                                DateTime startTime = currentTime.Subtract(subractThis);
+                                DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(subractThis);
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
                                 audioBadge = LCDInf.FindFirstChild(cf => cf.ByAutomationId("AudioBadgeButton"));
 
@@ -167,6 +168,9 @@ namespace AMDiscordRPC
                                                 break;
                                             case "Dolby Atmos":
                                                 audioStatus = 1;
+                                                break;
+                                            case "Dolby Audio":
+                                                audioStatus = 2;
                                                 break;
                                             default:
                                                 audioStatus = 3;

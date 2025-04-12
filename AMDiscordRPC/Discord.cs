@@ -31,13 +31,13 @@ namespace AMDiscordRPC
 
         public static void SetPresence(SongData x)
         {
-            log.Debug($"Timestamps {x.startTime}/{x.endTime}");
+            log.Debug($"Timestamps {x.StartTime}/{x.EndTime}");
             if (thread != null) thread.Abort();
             oldData.Details = ConvertToValidString(x.SongName);
             oldData.Timestamps = new Timestamps()
             {
-                Start = x.startTime,
-                End = x.endTime,
+                Start = x.StartTime,
+                End = x.EndTime,
             };
             client.SetPresence(oldData);
             Task t = Task.Run(async () => {
@@ -59,19 +59,19 @@ namespace AMDiscordRPC
 
         public static void SetPresence(SongData x, string[] resp)
         {
-            log.Debug($"Timestamps {x.startTime}/{x.endTime}");
+            log.Debug($"Timestamps {x.StartTime}/{x.EndTime}");
             if (thread != null) thread.Abort();
             oldData = new RichPresence()
             {
                 Type = ActivityType.Listening,
                 Details = ConvertToValidString(x.SongName),
-                State = $"by {((x.isMV) ? x.ArtistandAlbumName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[0]))}",
+                State = $"by {((x.IsMV) ? x.ArtistandAlbumName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[0]))}",
                 Assets = new Assets()
                 {
                     LargeImageKey = (resp.Length > 0) ? resp[0] : "",
-                    LargeImageText = (x.isMV) ? resp[2] : ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]),
-                    SmallImageKey = (x.audioDetail == 0) ? "lossless" : (x.audioDetail == 1) ? "dolbysimplified" : null,
-                    SmallImageText = (x.audioDetail == 0) ? "Lossless" : (x.audioDetail == 1) ? "Dolby Atmos" : null,
+                    LargeImageText = (x.IsMV) ? resp[2] : ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]),
+                    SmallImageKey = (x.AudioDetail == 0) ? "lossless" : (x.AudioDetail == 1 || x.AudioDetail == 2) ? "dolbysimplified" : null,
+                    SmallImageText = (x.AudioDetail == 0) ? "Lossless" : (x.AudioDetail == 1) ? "Dolby Atmos" : (x.AudioDetail == 2) ? "Dolby Audio" : null,
                 },
                 Buttons = new Button[]
                      {
@@ -79,8 +79,8 @@ namespace AMDiscordRPC
                      },
                 Timestamps = new Timestamps()
                 {
-                    Start = x.startTime,
-                    End = x.endTime,
+                    Start = x.StartTime,
+                    End = x.EndTime,
                 }
             };
             client.SetPresence(oldData);
