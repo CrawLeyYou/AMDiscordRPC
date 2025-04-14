@@ -1,17 +1,16 @@
-﻿using AngleSharp.Dom;
-using AngleSharp;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using static AMDiscordRPC.Globals;
-using AngleSharp.Html.Dom;
-using System.Web;
 
 namespace AMDiscordRPC
 {
     public class Covers
     {
-        public static async Task<String[]> FetchiTunes(string songDetails)
+        public static Thread CoverThread;
+
+        public static async Task<String[]> AsyncFetchiTunes(string songDetails)
         {
             try
             {
@@ -24,27 +23,31 @@ namespace AMDiscordRPC
                     if (imageRes["resultCount"] != 0)
                     {
                         string[] res = { imageRes["results"][0]["artworkUrl100"].ToString(), imageRes["results"][0]["trackViewUrl"].ToString(), imageRes["results"][0]["collectionName"].ToString() };
+                        CoverThread = null;
                         return res;
                     }
                     else
                     {
                         log.Warn("iTunes no image found");
+                        CoverThread = null;
                         return Array.Empty<string>();
                     }
                 }
                 else
                 {
                     log.Warn("iTunes request failed");
+                    CoverThread = null;
                     return Array.Empty<string>();
                 }
             }
             catch (Exception e)
             {
                 log.Error($"iTunes Exception {e.Message}");
+                CoverThread = null;
                 return Array.Empty<string>();
             }
         }
-        
+
         /* Discord doesn't support M3U8 at this time, but when M3U8 support comes we gonna have AnimatedCovers
          * 
         public static async Task<String> CheckAnimatedCover(string url, string songDetails)
@@ -71,7 +74,7 @@ namespace AMDiscordRPC
             }
         }
         */
-        
+
         /* I realized we don't need Last.fm API to be here, bc we are making Apple Music RPC aren't we? so i decided to just use iTunes and go on.
         * might add later for the situation where iTunes api is down.
 

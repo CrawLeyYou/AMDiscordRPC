@@ -4,11 +4,12 @@ using FlaUI.UIA3;
 using System;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Web;
 using static AMDiscordRPC.AppleMusic;
+using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
-using static AMDiscordRPC.Covers;
 
 namespace AMDiscordRPC
 {
@@ -29,8 +30,12 @@ namespace AMDiscordRPC
                  }
                  else
                  {
-                     string[] resp = await FetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
-                     SetPresence(x, resp);
+                     if (httpRes == Array.Empty<string>() || CoverThread != null)
+                     {
+                         httpRes = await AsyncFetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+                         log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
+                     }
+                     SetPresence(x, httpRes);
                      oldAlbumnArtist = x.ArtistandAlbumName;
                  }
              };
@@ -146,12 +151,24 @@ namespace AMDiscordRPC
                                         localizedStop = playButton.Name;
                                         log.Debug($"Localized stop found: {localizedStop}");
                                     }
-                                    oldValue = slider.AsSlider().Value;                            
+                                    oldValue = slider.AsSlider().Value;
                                 }
                                 else if (resetStatus == false && slider.AsSlider().Maximum != 0 && oldValue != 0 && currentSong == previousSong && currentArtistAlbum == previousArtistAlbum)
                                 {
                                     ChangeTimestamps(startTime, endTime);
                                     oldValue = slider.AsSlider().Value;
+                                }
+
+                                if (currentArtistAlbum != previousArtistAlbum && CoverThread == null)
+                                {
+                                    if (CoverThread != null) CoverThread.Abort();
+                                    Task t = Task.Run(async () =>
+                                    {
+                                        CoverThread = Thread.CurrentThread;
+                                        httpRes = await AsyncFetchiTunes(HttpUtility.UrlEncode(ConvertToValidString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())) + $" {ConvertToValidString(currentSong)}"));
+                                        log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
+                                    });
+                                    previousArtistAlbum = currentArtistAlbum;
                                 }
 
                                 if (slider.AsSlider().Maximum != 0 && slider.AsSlider().Value != 0 && endTime != startTime && (currentSong != previousSong || currentArtistAlbum != previousArtistAlbum))
@@ -174,12 +191,12 @@ namespace AMDiscordRPC
                                                 break;
                                             default:
                                                 audioStatus = 3;
-                                            break;
+                                                break;
                                         }
                                     }
                                     else audioStatus = 3;
                                     oldValue = 0;
-                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : currentArtistAlbum, currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, audioStatus));
+                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, audioStatus));
                                 }
 
                                 if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))
@@ -219,7 +236,8 @@ namespace AMDiscordRPC
                     {
                         log.Info("Something happened which needs to reattach");
                         client.ClearPresence();
-                        while (!AMAttached) {
+                        while (!AMAttached)
+                        {
                             AttachToAppleMusic();
                             Thread.Sleep(1000);
                         }

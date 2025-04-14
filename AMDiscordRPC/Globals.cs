@@ -22,6 +22,7 @@ namespace AMDiscordRPC
         public static readonly Assembly assembly = Assembly.GetExecutingAssembly();
         public static HtmlParser parser = new HtmlParser();
         public static RichPresence oldData = new RichPresence();
+        public static string[] httpRes = Array.Empty<string>();
 
         public static void ConfigureLogger()
         {
@@ -55,7 +56,7 @@ namespace AMDiscordRPC
         {
             public string SongName { get; set; }
             public string ArtistandAlbumName { get; set; }
-            public bool IsMV { get; set;}
+            public bool IsMV { get; set; }
             public DateTime StartTime { get; set; }
             public DateTime EndTime { get; set; }
             public int AudioDetail { get; set; }

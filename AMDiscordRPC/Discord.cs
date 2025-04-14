@@ -1,10 +1,10 @@
 ﻿using DiscordRPC;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Covers;
-using System.Threading;
+using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC
 {
@@ -40,7 +40,8 @@ namespace AMDiscordRPC
                 End = x.EndTime,
             };
             client.SetPresence(oldData);
-            Task t = Task.Run(async () => {
+            Task t = Task.Run(async () =>
+            {
                 thread = Thread.CurrentThread;
                 await AsyncSetButton(x);
             });
@@ -48,7 +49,7 @@ namespace AMDiscordRPC
 
         private static async Task AsyncSetButton(SongData x)
         {
-            string[] resp = await FetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+            string[] resp = await AsyncFetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
             oldData.Buttons = new Button[]
             {
                 new Button() { Label = "Listen on Apple Music", Url = (resp.Length > 0) ? resp[1].Replace("https://", "music://") : "music://music.apple.com/home"}
