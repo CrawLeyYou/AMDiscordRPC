@@ -5,12 +5,14 @@ using System.Threading.Tasks;
 using System.Web;
 using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.Playlist;
 
 namespace AMDiscordRPC
 {
     public class Discord
     {
         private static Thread thread;
+        private static Task animatedCoverThread;
 
         public static void InitializeDiscordRPC()
         {
@@ -58,10 +60,18 @@ namespace AMDiscordRPC
             thread = null;
         }
 
+        public static async Task SetCover(string coverURL)
+        {
+            oldData.Assets.LargeImageKey = coverURL;
+            client.SetPresence(oldData);
+            animatedCoverThread = null;
+        }
+
         public static void SetPresence(SongData x, string[] resp)
         {
             log.Debug($"Timestamps {x.StartTime}/{x.EndTime}");
             if (thread != null) thread.Abort();
+            if (animatedCoverThread != null) animatedCoverThread.Dispose();
             oldData = new RichPresence()
             {
                 Type = ActivityType.Listening,
@@ -85,6 +95,12 @@ namespace AMDiscordRPC
                 }
             };
             client.SetPresence(oldData);
+            if (resp.Length > 0)
+            {
+                Task t = new Task(() => CheckAnimatedCover(resp[1]));
+                t.Start();
+                animatedCoverThread = t;
+            }
         }
     }
 }

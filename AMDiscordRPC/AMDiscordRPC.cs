@@ -117,6 +117,7 @@ namespace AMDiscordRPC
                 {
                     string previousSong = string.Empty;
                     string previousArtistAlbum = string.Empty;
+                    string lastFetchedArtistAlbum = string.Empty;
                     int audioStatus = 3;
                     bool resetStatus = false;
                     double oldValue = 0;
@@ -128,13 +129,15 @@ namespace AMDiscordRPC
                             try
                             {
                                 var currentSong = listeningInfo[0].Name;
-                                var currentArtistAlbum = listeningInfo[1].Name;
-                                var dashSplit = listeningInfo[1].Name.Split('-');
+                                var currentArtistAlbum = (listeningInfo[1].Properties.Name.IsSupported == true) ? listeningInfo[1].Name : lastFetchedArtistAlbum;
+                                var dashSplit = currentArtistAlbum.Split('-');
                                 var subractThis = TimeSpan.FromSeconds(slider.AsSlider().Value + 1);
                                 if (oldValue == 0) oldValue = slider.AsSlider().Value;
                                 DateTime currentTime = DateTime.UtcNow;
                                 DateTime startTime = currentTime.Subtract(subractThis);
                                 DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(subractThis);
+                                DateTime oldEndTime = DateTime.MinValue;
+                                DateTime oldStartTime = DateTime.MinValue;
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
                                 audioBadge = LCDInf.FindFirstChild(cf => cf.ByAutomationId("AudioBadgeButton"));
 
@@ -153,25 +156,31 @@ namespace AMDiscordRPC
                                     }
                                     oldValue = slider.AsSlider().Value;
                                 }
-                                else if (resetStatus == false && slider.AsSlider().Maximum != 0 && oldValue != 0 && currentSong == previousSong && currentArtistAlbum == previousArtistAlbum)
+                                else if (resetStatus == false && slider.AsSlider().Maximum != 0 && oldValue != 0 && currentSong == previousSong && currentArtistAlbum == previousArtistAlbum && startTime != endTime)
                                 {
                                     ChangeTimestamps(startTime, endTime);
                                     oldValue = slider.AsSlider().Value;
                                 }
 
-                                if (currentArtistAlbum != previousArtistAlbum && CoverThread == null)
+                                if (currentArtistAlbum != lastFetchedArtistAlbum)
                                 {
-                                    if (CoverThread != null) CoverThread.Abort();
-                                    Task t = Task.Run(async () =>
+                                    if (CoverThread != null)
                                     {
-                                        CoverThread = Thread.CurrentThread;
+                                        CoverThread.Dispose();
+                                        log.Debug("Previous thread disposed");
+                                    }
+                                    else log.Debug("Continue");
+                                    Task t = new Task(async () =>
+                                    {
                                         httpRes = await AsyncFetchiTunes(HttpUtility.UrlEncode(ConvertToValidString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())) + $" {ConvertToValidString(currentSong)}"));
                                         log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
                                     });
-                                    previousArtistAlbum = currentArtistAlbum;
+                                    CoverThread = t;
+                                    t.Start();
+                                    lastFetchedArtistAlbum = currentArtistAlbum;
                                 }
 
-                                if (slider.AsSlider().Maximum != 0 && slider.AsSlider().Value != 0 && endTime != startTime && (currentSong != previousSong || currentArtistAlbum != previousArtistAlbum))
+                                if (slider.AsSlider().Maximum != 0 && slider.AsSlider().Value != 0 && endTime != startTime && (currentSong != previousSong || currentArtistAlbum != previousArtistAlbum) && oldEndTime != endTime && oldStartTime != startTime)
                                 {
                                     // sometimes discord doesn't register rich presence idk why i tried everything...
                                     previousArtistAlbum = currentArtistAlbum;
@@ -196,6 +205,8 @@ namespace AMDiscordRPC
                                     }
                                     else audioStatus = 3;
                                     oldValue = 0;
+                                    oldStartTime = startTime;
+                                    oldEndTime = endTime;
                                     AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, audioStatus));
                                 }
 

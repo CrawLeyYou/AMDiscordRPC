@@ -1,14 +1,16 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using AngleSharp.Html.Dom;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.Playlist;
 
 namespace AMDiscordRPC
 {
     public class Covers
     {
-        public static Thread CoverThread;
+        public static Task CoverThread;
 
         public static async Task<String[]> AsyncFetchiTunes(string songDetails)
         {
@@ -48,9 +50,8 @@ namespace AMDiscordRPC
             }
         }
 
-        /* Discord doesn't support M3U8 at this time, but when M3U8 support comes we gonna have AnimatedCovers
-         * 
-        public static async Task<String> CheckAnimatedCover(string url, string songDetails)
+
+        public static async Task CheckAnimatedCover(string url)
         {
             try
             {
@@ -59,21 +60,19 @@ namespace AMDiscordRPC
                 {
                     string DOMasAString = await appleMusicDom.Content.ReadAsStringAsync();
                     IHtmlDocument document = parser.ParseDocument(DOMasAString);
-                    return document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0];
+                    await ConvertM3U8(document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0]);
                 }
                 else
                 {
                     log.Error($"Apple Music request failed");
-                    return null;
                 }
             }
             catch (Exception e)
             {
-                log.Error($"Apple Music fetch exception: {e.Message}");
-                return null;
+                log.Error($"Apple Music animatedCover exception: {e.Message}");
             }
         }
-        */
+
 
         /* I realized we don't need Last.fm API to be here, bc we are making Apple Music RPC aren't we? so i decided to just use iTunes and go on.
         * might add later for the situation where iTunes api is down.
