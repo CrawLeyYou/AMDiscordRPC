@@ -10,6 +10,7 @@ using static AMDiscordRPC.AppleMusic;
 using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.S3;
 
 namespace AMDiscordRPC
 {
@@ -39,6 +40,8 @@ namespace AMDiscordRPC
                      oldAlbumnArtist = x.ArtistandAlbumName;
                  }
              };
+            CheckFFMpeg();
+            InitS3();
             AMEvent();
         }
 
@@ -207,7 +210,7 @@ namespace AMDiscordRPC
                                     oldValue = 0;
                                     oldStartTime = startTime;
                                     oldEndTime = endTime;
-                                    AMSongDataEvent.SongChange(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, audioStatus));
+                                    AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, audioStatus));
                                 }
 
                                 if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))

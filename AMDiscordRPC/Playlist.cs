@@ -1,7 +1,10 @@
-﻿using M3U8Parser;
+﻿using AngleSharp.Text;
+using FlaUI.Core.Tools;
+using M3U8Parser;
 using M3U8Parser.Tags.MultivariantPlaylist;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,6 +14,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.S3;
 
 namespace AMDiscordRPC
 {
@@ -33,7 +37,12 @@ namespace AMDiscordRPC
                         client.DownloadFile(newUrl, $@"{Application.StartupPath}\temp\{fileName}");
                     }
                     log.Debug("Downloaded cover");
-                    //SetCover("https://raw.githubusercontent.com/CrawLeyYou/raw/refs/heads/main/output.gif");
+                    string gifPath = await ConvertToGIF(fileName, playlist.FrameRate);
+                    log.Debug($"Converted to GIF. Path: {gifPath}");
+                    string servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
+                    log.Debug("Put S3 Bucket");
+                    SetCover(servedPath);
+                    log.Debug("Set Animated Cover");
                 }
                 catch (Exception e)
                 {
@@ -66,6 +75,18 @@ namespace AMDiscordRPC
                 log.Error($"An error occured while fetching the media playlist: {e}");
                 return null;
             }
+        }
+
+        public static async Task<string> ConvertToGIF(string fileName, decimal? fps)
+        {
+            Process proc = new Process();
+            proc.StartInfo.FileName = ffmpegPath;
+            proc.StartInfo.UseShellExecute = false;
+            proc.StartInfo.CreateNoWindow = true;
+            proc.StartInfo.Arguments = $@"-y -i ""{Application.StartupPath}\temp\{fileName}"" -vf ""fps={Decimal.ToInt32((decimal)fps)},scale=300:-1:flags=lanczos"" ""{Application.StartupPath}\temp\{fileName.Replace(".mp4", ".gif")}""";
+            proc.Start();
+            proc.WaitForExit();
+            return $@"{Application.StartupPath}\temp\{fileName.Replace(".mp4", ".gif")}";
         }
 
         public static async Task<StreamInf> FetchResolution(string playlistUrl)
