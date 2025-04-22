@@ -8,7 +8,8 @@
 You need to install all NuGet packages and .NET Framework 4.7.2. (You need to install [DiscordRPC](https://github.com/Lachee/discord-rpc-csharp/releases/download/v1.3.0/DiscordRichPresence.1.3.0.28.nupkg) package independently)
 
 ## How it looks like
-![fNlTOFdE8F](https://github.com/user-attachments/assets/6bfbe910-3820-42a6-9935-4ace2fdaead9)
+![JCZxbaqMCM](https://github.com/user-attachments/assets/5509dc24-4d25-4171-aeb6-9723ccb4fce9)
+
 
 ## License
 This project is licensed under [MIT](https://opensource.org/license/MIT) license.
