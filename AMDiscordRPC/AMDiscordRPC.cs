@@ -192,9 +192,6 @@ namespace AMDiscordRPC
                                     {
                                         switch (audioBadge?.Name)
                                         {
-                                            case "Lossless":
-                                                audioStatus = 0;
-                                                break;
                                             case "Dolby Atmos":
                                                 audioStatus = 1;
                                                 break;
@@ -202,7 +199,7 @@ namespace AMDiscordRPC
                                                 audioStatus = 2;
                                                 break;
                                             default:
-                                                audioStatus = 3;
+                                                audioStatus = 0;
                                                 break;
                                         }
                                     }
