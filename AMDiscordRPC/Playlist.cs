@@ -22,25 +22,28 @@ namespace AMDiscordRPC
     {
         public static async Task<string> ConvertM3U8(string playlistUrl)
         {
+            //Database isAnimated = true here
+            //Database streamURL = playlistURL
+            // ^I thought storing Master Playlist would be better for in case of bucket changes and Apple's codec changes on lowest quality.
             StreamInf playlist = await FetchResolution(playlistUrl);
             if (playlist != null)
             {
                 string[] splitUrl = playlist.Uri.Split('/');
                 string fileName = await FetchFileName(playlist.Uri);
-                string newUrl = string.Join("/", splitUrl.Take(splitUrl.Length - 1)) + $"/{fileName}";
-
+                string newURL = string.Join("/", splitUrl.Take(splitUrl.Length - 1)) + $"/{fileName}";
                 Directory.CreateDirectory($@"{Application.StartupPath}\temp\");
                 try
                 {
                     using (WebClient client = new WebClient())
                     {
-                        client.DownloadFile(newUrl, $@"{Application.StartupPath}\temp\{fileName}");
+                        client.DownloadFile(newURL, $@"{Application.StartupPath}\temp\{fileName}");
                     }
                     log.Debug("Downloaded cover");
                     string gifPath = await ConvertToGIF(fileName, playlist.FrameRate);
                     log.Debug($"Converted to GIF. Path: {gifPath}");
                     string servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
                     log.Debug("Put S3 Bucket");
+                    //Database animatedURL = servedPath
                     SetCover(servedPath);
                     log.Debug("Set Animated Cover");
                 }

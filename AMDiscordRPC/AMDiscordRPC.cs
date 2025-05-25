@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Web;
 using static AMDiscordRPC.AppleMusic;
 using static AMDiscordRPC.Covers;
+using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.S3;
@@ -40,6 +41,7 @@ namespace AMDiscordRPC
                      oldAlbumnArtist = x.ArtistandAlbumName;
                  }
              };
+            CheckDatabaseIntegrity();
             CheckFFMpeg();
             InitS3();
             AMEvent();
