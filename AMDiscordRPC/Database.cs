@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AngleSharp.Text;
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
@@ -12,7 +13,7 @@ namespace AMDiscordRPC
         private static readonly Dictionary<string, string> sqlMap = new Dictionary<string, string>()
         {
             {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT 0, streamURL TEXT, animatedURL TEXT" },
-            {"creds", "S3_accessKey TEXT, S3_secretKey TEXT, S3_serviceURL TEXT, S3_bucketName TEXT, S3_isSpecificKey BOOLEAN CHECK (S3_isSpecificKey IN (0,1)), S3_test TEXT" },
+            {"creds", "S3_accessKey TEXT NOT NULL, S3_secretKey TEXT NOT NULL, S3_serviceURL TEXT NOT NULL, S3_bucketName TEXT NOT NULL, S3_bucketURL TEXT NOT NULL, S3_isSpecificKey BOOLEAN NOT NULL CHECK (S3_isSpecificKey IN (0,1))" },
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" }
         };
 
@@ -36,12 +37,11 @@ namespace AMDiscordRPC
             InitDatabase();
             if (sqlite != null)
             {
-                CheckColumns("coverTable");
                 try
                 {
                     //CheckForeignKeys(); we don't have use case for relationships rn so no need to waste resources on this check
-                    CheckTablesAndColumns();
-                    
+                    CheckTables();
+                    CheckColumns();
                 }
                 catch (Exception e)
                 {
@@ -65,12 +65,11 @@ namespace AMDiscordRPC
             else throw new Exception("Foreign Keys are not supported / somehow unable to enable.");
         }
 
-        private static void CheckTablesAndColumns()
+        private static void CheckTables()
         {
             SQLiteDataReader data = ExecuteReaderCommand("PRAGMA table_list");
             Dictionary<string, int> tablesAndColumns = new Dictionary<string, int>();
             List<string> missingTables = new List<string>();
-            List<string> missingColumns = new List<string>();
 
             while (data.Read())
             {
@@ -79,12 +78,7 @@ namespace AMDiscordRPC
 
             foreach (var item in sqlMap.Keys.ToArray())
             {
-                if (tablesAndColumns.ContainsKey(item))
-                {
-                    if (sqlMap[item].Split(new[] { ", " }, StringSplitOptions.None).Length != tablesAndColumns[item])
-                        missingColumns.Add(item);
-                }
-                else missingTables.Add(item);
+                if (!tablesAndColumns.ContainsKey(item)) missingTables.Add(item);
             }
 
             if (missingTables.Count == sqlMap.Keys.Count)
@@ -97,28 +91,48 @@ namespace AMDiscordRPC
                 log.Warn($"These tables are missing: {string.Join(", ", missingTables)} creating them.");
                 foreach (var item in missingTables)
                 {
-                    ExecuteNonQueryCommand($"CREATE TABLE IF NO EXISTS {item}({sqlMap[item]})");
+                    ExecuteNonQueryCommand($"CREATE TABLE IF NOT EXISTS {item}({sqlMap[item]})");
                 }
             }
             else log.Debug("No missing table found.");
-
-            if (missingColumns.Count != 0)
-            {
-                log.Debug($"Missing columns found in: {string.Join(", ", missingColumns)}");
-            }
         }
 
-        private static void CheckColumns(string table)
+        private static void CheckColumns()
         {
-            SQLiteDataReader data = ExecuteReaderCommand($"PRAGMA table_info({table})");
-            Dictionary<string, ColumnInfo> tableData = new Dictionary<string, ColumnInfo>();
-
-            while (data.Read())
+            foreach (var table in sqlMap.Keys)
             {
-               tableData.Add(data.GetString(1), new ColumnInfo(data.GetString(2), data.GetBoolean(3), (!data.IsDBNull(4)) ? data.GetString(4) : null, data.GetBoolean(5)));
+                SQLiteDataReader data = ExecuteReaderCommand($"PRAGMA table_info({table})");
+                Dictionary<string, ColumnInfo> tableData = new Dictionary<string, ColumnInfo>();
+
+                while (data.Read())
+                {
+                    tableData.Add(data.GetString(1), new ColumnInfo(data.GetString(2), data.GetBoolean(3), (!data.IsDBNull(4)) ? data.GetString(4) : null, data.GetBoolean(5)));
+                }
+
+                foreach (var item in ConvertSQLStringToColumnInfo(sqlMap[table]))
+                {
+                    ColumnInfo column = (tableData.Keys.Contains(item.Key) ? tableData[item.Key] : null);
+                    string SQLInfo = Array.Find(sqlMap[table].Split(new[] { ", " }, StringSplitOptions.None), s => s.Contains(item.Key));
+                    if (!item.Value.Equals(column) && column != null)
+                    {
+                        log.Debug($"Corrupted/Outdated column:{SQLInfo.Split(' ')[0]} found.");
+                        if (!item.Value.primaryKey && ((item.Value.nullCheck && item.Value.defaultValue != null) || !item.Value.nullCheck))
+                        {
+                            ExecuteNonQueryCommand($"ALTER TABLE {table} DROP COLUMN {SQLInfo.Split(' ')[0]}");
+                            ExecuteNonQueryCommand($"ALTER TABLE {table} ADD COLUMN {SQLInfo}");
+                            log.Info($"Recreated column: {SQLInfo.Split(' ')[0]}");
+                        }
+                        else
+                        {
+                            // Recovery functionality will be added next release.
+                        }
+                    }
+                    else if (column == null)
+                    {
+                        ExecuteNonQueryCommand($"ALTER TABLE {table} ADD COLUMN {SQLInfo}");
+                    }
+                }
             }
-            log.Debug(tableData["animatedURL"].defaultValue);
-            log.Debug(ConvertSQLStringToColumnInfo(sqlMap["coverTable"])["animatedURL"].defaultValue);
         }
 
         private static Dictionary<string, ColumnInfo> ConvertSQLStringToColumnInfo(string sqlStr)
@@ -138,7 +152,7 @@ namespace AMDiscordRPC
             return columnsMap;
         }
 
-        public static string ExecuteScalarCommand(string command)
+        public static object ExecuteScalarCommand(string command)
         {
             try
             {
@@ -193,6 +207,15 @@ namespace AMDiscordRPC
                 this.nullCheck = nullCheck;
                 this.defaultValue = defaultValue;
                 this.primaryKey = primaryKey;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ColumnInfo other &&
+                       type == other.type &&
+                       nullCheck == other.nullCheck &&
+                       defaultValue == other.defaultValue &&
+                       primaryKey == other.primaryKey;
             }
         }
     }

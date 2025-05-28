@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC
 {
@@ -16,10 +17,10 @@ namespace AMDiscordRPC
 
         public static void InitS3()
         {
-            BasicAWSCredentials credentials = new BasicAWSCredentials("accessKey-Id", "secretKey");
+            BasicAWSCredentials credentials = new BasicAWSCredentials(S3_Credentials.accessKey, S3_Credentials.secretKey);
             s3Client = new AmazonS3Client(credentials, new AmazonS3Config
             {
-                ServiceURL = "S3/R2 Bucket url",
+                ServiceURL = S3_Credentials.serviceURL,
                 RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
                 ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
             });
@@ -30,13 +31,13 @@ namespace AMDiscordRPC
             PutObjectRequest request = new PutObjectRequest
             {
                 FilePath = @path,
-                BucketName = "bucket-name",
+                BucketName = S3_Credentials.bucketName,
                 DisablePayloadSigning = true
             };
 
             PutObjectResponse response = await s3Client.PutObjectAsync(request);
 
-            return $"https://your.domain.com/{filename}";
+            return S3_Credentials.bucketURL + ((S3_Credentials.isSpecificKey) ? filename : $"{S3_Credentials.bucketName}/{filename}") ;
         }
     }
 }
