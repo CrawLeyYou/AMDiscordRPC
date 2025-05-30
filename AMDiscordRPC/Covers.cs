@@ -51,7 +51,7 @@ namespace AMDiscordRPC
         }
 
 
-        public static async Task CheckAnimatedCover(string url)
+        public static async Task CheckAnimatedCover(string album, string url)
         {
             try
             {
@@ -60,7 +60,7 @@ namespace AMDiscordRPC
                 {
                     string DOMasAString = await appleMusicDom.Content.ReadAsStringAsync();
                     IHtmlDocument document = parser.ParseDocument(DOMasAString);
-                    await ConvertM3U8(document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0]);
+                    await ConvertM3U8(album, document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0]);
                 }
                 else
                 {

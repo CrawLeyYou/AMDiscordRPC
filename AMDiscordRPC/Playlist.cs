@@ -20,11 +20,12 @@ namespace AMDiscordRPC
 {
     internal class Playlist
     {
-        public static async Task<string> ConvertM3U8(string playlistUrl)
+        public static async Task<string> ConvertM3U8(string album, string playlistUrl)
         {
             //Database isAnimated = true here
             //Database streamURL = playlistURL
             // ^I thought storing Master Playlist would be better for in case of bucket changes and Apple's codec changes on lowest quality.
+            Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, true, playlistUrl, null));
             StreamInf playlist = await FetchResolution(playlistUrl);
             if (playlist != null)
             {
@@ -44,6 +45,7 @@ namespace AMDiscordRPC
                     string servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
                     log.Debug("Put S3 Bucket");
                     //Database animatedURL = servedPath
+                    Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, null, null, servedPath));
                     SetCover(servedPath);
                     log.Debug("Set Animated Cover");
                 }

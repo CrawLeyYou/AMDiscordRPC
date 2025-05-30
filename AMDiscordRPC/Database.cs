@@ -1,8 +1,8 @@
-﻿using AngleSharp.Text;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
+using System.Reflection;
 using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC
@@ -95,6 +95,29 @@ namespace AMDiscordRPC
                 }
             }
             else log.Debug("No missing table found.");
+        }
+
+        public static void UpdateAlbum(SQLCoverResponse data)
+        {
+            ExecuteNonQueryCommand($"UPDATE coverTable SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) WHERE album = '{data.album}'");
+        }
+
+        public static SQLCoverResponse GetAlbumDataFromSQL(string album)
+        {
+            using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT * FROM coverTable WHERE album = '{album}'"))
+            {
+                while (reader.Read())
+                {
+                    return new SQLCoverResponse(
+                        reader.GetString(0),
+                        ((!reader.IsDBNull(1)) ? reader.GetString(1) : null),
+                        reader.GetString(2),
+                        reader.GetBoolean(3),
+                        ((!reader.IsDBNull(4)) ? reader.GetString(4) : null),
+                        ((!reader.IsDBNull(5)) ? reader.GetString(5) : null));
+                }
+            }
+            return null;
         }
 
         private static void CheckColumns()
@@ -216,6 +239,36 @@ namespace AMDiscordRPC
                        nullCheck == other.nullCheck &&
                        defaultValue == other.defaultValue &&
                        primaryKey == other.primaryKey;
+            }
+        }
+
+        public class SQLCoverResponse
+        {
+            public string album { get; set; }
+            public string source { get; set; }
+            public string redirURL { get; set; }
+            public bool? animated { get; set; }
+            public string streamURL { get; set; }
+            public string animatedURL { get; set; }
+
+            public SQLCoverResponse(string album, string source, string redirURL, bool? animated, string streamURL, string animatedURL)
+            {
+                this.album = album;
+                this.source = source;
+                this.redirURL = redirURL;
+                this.animated = animated;
+                this.streamURL = streamURL;
+                this.animatedURL = animatedURL;
+            }
+
+            public List<string> GetNotNullKeys()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) != null && s.GetValue(this) != this.album).Select(p => p.Name).ToList();
+            }
+
+            public List<object> GetNotNullValues()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) != null && s.GetValue(this) != this.album).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
             }
         }
     }

@@ -97,7 +97,7 @@ namespace AMDiscordRPC
             client.SetPresence(oldData);
             if (resp.Length > 0)
             {
-                Task t = new Task(() => CheckAnimatedCover(resp[1]));
+                Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp[1]));
                 t.Start();
                 animatedCoverThread = t;
             }

@@ -37,7 +37,7 @@ namespace AMDiscordRPC
 
             PutObjectResponse response = await s3Client.PutObjectAsync(request);
 
-            return S3_Credentials.bucketURL + ((S3_Credentials.isSpecificKey) ? filename : $"{S3_Credentials.bucketName}/{filename}") ;
+            return S3_Credentials.bucketURL + ((S3_Credentials.isSpecificKey) ? filename : $"{S3_Credentials.bucketName}/{filename}");
         }
     }
 }

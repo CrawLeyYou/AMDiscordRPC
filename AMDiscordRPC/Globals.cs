@@ -73,7 +73,8 @@ namespace AMDiscordRPC
 
         private static void StartFFMpegProcess(string filename)
         {
-            try {
+            try
+            {
                 Process proc = new Process();
                 proc.StartInfo.FileName = filename;
                 proc.StartInfo.Arguments = "-version";
@@ -94,7 +95,9 @@ namespace AMDiscordRPC
                 proc.Start();
                 proc.BeginOutputReadLine();
                 proc.WaitForExit();
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 log.Error($"FFMpeg Check error: {ex}");
             }
         }
