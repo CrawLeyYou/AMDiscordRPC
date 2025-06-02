@@ -12,7 +12,7 @@ namespace AMDiscordRPC
     public class Discord
     {
         private static Thread thread;
-        private static Task animatedCoverThread;
+        public static Task animatedCoverThread;
 
         public static void InitializeDiscordRPC()
         {
@@ -51,7 +51,7 @@ namespace AMDiscordRPC
 
         private static async Task AsyncSetButton(SongData x)
         {
-            string[] resp = await AsyncFetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+            string[] resp = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
             oldData.Buttons = new Button[]
             {
                 new Button() { Label = "Listen on Apple Music", Url = (resp.Length > 0) ? resp[1].Replace("https://", "music://") : "music://music.apple.com/home"}
@@ -95,7 +95,7 @@ namespace AMDiscordRPC
                 }
             };
             client.SetPresence(oldData);
-            if (resp.Length > 0)
+            if (resp[0].Contains(S3_Credentials.bucketURL) == false)
             {
                 Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp[1]));
                 t.Start();

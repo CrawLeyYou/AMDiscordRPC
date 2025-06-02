@@ -12,19 +12,20 @@ namespace AMDiscordRPC
     {
         public static Task CoverThread;
 
-        public static async Task<String[]> AsyncFetchiTunes(string songDetails)
+        public static async Task<String[]> AsyncFetchiTunes(string album, string searchStr)
         {
             try
             {
                 //idk why but sometimes when you search as "Artist - Album Track" and if Album and Track named same it returns random song from album
                 //ex: "Poppy - Negative Spaces negative spaces" Returns "Poppy - New Way Out" as a track link
-                var iTunesReq = await hclient.GetAsync($"https://itunes.apple.com/search?term={songDetails}&limit=1&entity=song");
+                var iTunesReq = await hclient.GetAsync($"https://itunes.apple.com/search?term={searchStr}&limit=1&entity=song");
                 if (iTunesReq.IsSuccessStatusCode)
                 {
                     dynamic imageRes = JObject.Parse(await iTunesReq.Content.ReadAsStringAsync());
                     if (imageRes["resultCount"] != 0)
                     {
                         string[] res = { imageRes["results"][0]["artworkUrl100"].ToString(), imageRes["results"][0]["trackViewUrl"].ToString(), imageRes["results"][0]["collectionName"].ToString() };
+                        Database.UpdateAlbum(new Database.SQLCoverResponse(album, res[0], res[1], null, null, null));
                         CoverThread = null;
                         return res;
                     }
@@ -50,7 +51,6 @@ namespace AMDiscordRPC
             }
         }
 
-
         public static async Task CheckAnimatedCover(string album, string url)
         {
             try
@@ -65,14 +65,40 @@ namespace AMDiscordRPC
                 else
                 {
                     log.Error($"Apple Music request failed");
+                    Discord.animatedCoverThread = null;
                 }
             }
             catch (Exception e)
             {
                 log.Error($"Apple Music animatedCover exception: {e.Message}");
+                Discord.animatedCoverThread = null;
+                Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, false, null, null));
             }
         }
 
+        public static async Task<string[]> GetCover(string album, string searchStr)
+        {
+            try { 
+                Database.SQLCoverResponse cover = Database.GetAlbumDataFromSQL(album);
+                if (cover != null)
+                {
+                    string[] res = { (cover.animated == true) ? cover.animatedURL : (cover.source != null) ? cover.source : throw new Exception("Source not found."), cover.redirURL, album};
+                    if (cover.animated == null && cover.redirURL != null)
+                    {
+                        if (Discord.animatedCoverThread != null) Discord.animatedCoverThread.Dispose();
+                        Task t = new Task(() => CheckAnimatedCover(album, cover.redirURL));
+                        t.Start();
+                        Discord.animatedCoverThread = t;
+                    }
+                    return res;
+                }
+                else return await AsyncFetchiTunes(album, searchStr);
+            } 
+            catch (Exception ex)
+            {
+                return await AsyncFetchiTunes(album, searchStr);
+            }
+        }
 
         /* I realized we don't need Last.fm API to be here, bc we are making Apple Music RPC aren't we? so i decided to just use iTunes and go on.
         * might add later for the situation where iTunes api is down.

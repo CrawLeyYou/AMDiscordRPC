@@ -34,7 +34,7 @@ namespace AMDiscordRPC
                  {
                      if (httpRes == Array.Empty<string>() || CoverThread != null)
                      {
-                         httpRes = await AsyncFetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+                         httpRes = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
                          log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
                      }
                      SetPresence(x, httpRes);
@@ -176,9 +176,11 @@ namespace AMDiscordRPC
                                         log.Debug("Previous thread disposed");
                                     }
                                     else log.Debug("Continue");
+                                    string idontknowwhatshouldinamethisbutitsaboutalbum = (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray());
+                                    CheckAndInsertAlbum(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1]);
                                     Task t = new Task(async () =>
                                     {
-                                        httpRes = await AsyncFetchiTunes(HttpUtility.UrlEncode(ConvertToValidString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())) + $" {ConvertToValidString(currentSong)}"));
+                                        httpRes = await GetCover(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())) + $" {ConvertToValidString(currentSong)}"));
                                         log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
                                     });
                                     CoverThread = t;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC
@@ -12,7 +13,7 @@ namespace AMDiscordRPC
         private static SQLiteConnection sqlite;
         private static readonly Dictionary<string, string> sqlMap = new Dictionary<string, string>()
         {
-            {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT 0, streamURL TEXT, animatedURL TEXT" },
+            {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" },
             {"creds", "S3_accessKey TEXT NOT NULL, S3_secretKey TEXT NOT NULL, S3_serviceURL TEXT NOT NULL, S3_bucketName TEXT NOT NULL, S3_bucketURL TEXT NOT NULL, S3_isSpecificKey BOOLEAN NOT NULL CHECK (S3_isSpecificKey IN (0,1))" },
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" }
         };
@@ -61,7 +62,7 @@ namespace AMDiscordRPC
         private static void CheckForeignKeys()
         {
             ExecuteNonQueryCommand("PRAGMA foreign_keys = on");
-            if (ExecuteScalarCommand("PRAGMA foreign_keys") == "1") log.Debug("Foreign Keys enabled.");
+            if (ExecuteScalarCommand("PRAGMA foreign_keys").ToString() == "1") log.Debug("Foreign Keys enabled.");
             else throw new Exception("Foreign Keys are not supported / somehow unable to enable.");
         }
 
@@ -102,9 +103,15 @@ namespace AMDiscordRPC
             ExecuteNonQueryCommand($"UPDATE coverTable SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) WHERE album = '{data.album}'");
         }
 
+        public static void CheckAndInsertAlbum(string album)
+        {
+            if (ExecuteScalarCommand($"SELECT album from coverTable WHERE album = '{album}'") == null)
+                ExecuteNonQueryCommand($"INSERT INTO coverTable(album) VALUES ('{album}')");
+        }
+
         public static SQLCoverResponse GetAlbumDataFromSQL(string album)
         {
-            using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT * FROM coverTable WHERE album = '{album}'"))
+            using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT * FROM coverTable WHERE album = '{album}' LIMIT 1"))
             {
                 while (reader.Read())
                 {
@@ -112,7 +119,7 @@ namespace AMDiscordRPC
                         reader.GetString(0),
                         ((!reader.IsDBNull(1)) ? reader.GetString(1) : null),
                         reader.GetString(2),
-                        reader.GetBoolean(3),
+                        ((!reader.IsDBNull(3)) ? reader.GetBoolean(3) : null),
                         ((!reader.IsDBNull(4)) ? reader.GetString(4) : null),
                         ((!reader.IsDBNull(5)) ? reader.GetString(5) : null));
                 }
@@ -180,7 +187,7 @@ namespace AMDiscordRPC
             try
             {
                 SQLiteCommand cmd = new SQLiteCommand($@"{command}", sqlite);
-                return cmd.ExecuteScalar().ToString();
+                return cmd.ExecuteScalar();
             }
             catch (Exception ex)
             {
