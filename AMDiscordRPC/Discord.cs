@@ -5,12 +5,14 @@ using System.Threading.Tasks;
 using System.Web;
 using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.Playlist;
 
 namespace AMDiscordRPC
 {
     public class Discord
     {
-        private static Thread thread;
+        private static Thread thread = null;
+        public static CancellationTokenSource animatedCoverCts;
 
         public static void InitializeDiscordRPC()
         {
@@ -49,7 +51,7 @@ namespace AMDiscordRPC
 
         private static async Task AsyncSetButton(SongData x)
         {
-            string[] resp = await AsyncFetchiTunes(HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+            string[] resp = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
             oldData.Buttons = new Button[]
             {
                 new Button() { Label = "Listen on Apple Music", Url = (resp.Length > 0) ? resp[1].Replace("https://", "music://") : "music://music.apple.com/home"}
@@ -58,10 +60,22 @@ namespace AMDiscordRPC
             thread = null;
         }
 
+        public static async Task SetCover(string coverURL)
+        {
+            oldData.Assets.LargeImageKey = coverURL;
+            client.SetPresence(oldData);
+            animatedCoverCts = null;
+        }
+
         public static void SetPresence(SongData x, string[] resp)
         {
             log.Debug($"Timestamps {x.StartTime}/{x.EndTime}");
             if (thread != null) thread.Abort();
+            if (animatedCoverCts != null)
+            {
+                animatedCoverCts.Cancel();
+                animatedCoverCts.Dispose();
+            }
             oldData = new RichPresence()
             {
                 Type = ActivityType.Listening,
@@ -85,6 +99,12 @@ namespace AMDiscordRPC
                 }
             };
             client.SetPresence(oldData);
+            if (resp?[0] is { Length: > 0 } && !resp[0].Contains((S3_Credentials != null) ? S3_Credentials.bucketURL : ""))
+            {
+                animatedCoverCts = new CancellationTokenSource();
+                Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp[1], animatedCoverCts.Token));
+                t.Start();
+            }
         }
     }
 }

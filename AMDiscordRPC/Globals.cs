@@ -3,10 +3,16 @@ using DiscordRPC;
 using DiscordRPC.Helper;
 using log4net;
 using log4net.Config;
+using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
+using System.Data.SQLite;
+using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AMDiscordRPC
 {
@@ -23,6 +29,8 @@ namespace AMDiscordRPC
         public static HtmlParser parser = new HtmlParser();
         public static RichPresence oldData = new RichPresence();
         public static string[] httpRes = Array.Empty<string>();
+        public static string ffmpegPath;
+        public static S3_Creds S3_Credentials;
 
         public static void ConfigureLogger()
         {
@@ -35,7 +43,7 @@ namespace AMDiscordRPC
         public class AMSongDataEvent
         {
             public static event EventHandler<SongData> SongChanged;
-            public static void SongChange(SongData e)
+            public static void ChangeSong(SongData e)
             {
                 SongChanged?.Invoke(null, e);
             }
@@ -50,6 +58,72 @@ namespace AMDiscordRPC
                 data = Encoding.UTF8.GetString(byteArr).TrimEnd('�');
             }
             return data;
+        }
+
+        public static void InitDBCreds()
+        {
+            using (SQLiteDataReader dbResp = Database.ExecuteReaderCommand("SELECT * FROM creds LIMIT 1"))
+            {
+                while (dbResp.Read())
+                {
+                    S3_Credentials = new S3_Creds(
+                        ((!dbResp.IsDBNull(0)) ? dbResp.GetString(0) : null),
+                        ((!dbResp.IsDBNull(1)) ? dbResp.GetString(1) : null),
+                        ((!dbResp.IsDBNull(2)) ? dbResp.GetString(2) : null),
+                        ((!dbResp.IsDBNull(3)) ? dbResp.GetString(3) : null),
+                        ((!dbResp.IsDBNull(4)) ? dbResp.GetString(4) : null),
+                        ((!dbResp.IsDBNull(5)) ? dbResp.GetBoolean(5) : null));
+                }
+            }
+        }
+
+        private static void StartFFMpegProcess(string filename)
+        {
+            try
+            {
+                Process proc = new Process();
+                proc.StartInfo.FileName = filename;
+                proc.StartInfo.Arguments = "-version";
+                proc.StartInfo.UseShellExecute = false;
+                proc.StartInfo.RedirectStandardOutput = true;
+                proc.StartInfo.CreateNoWindow = true;
+                proc.OutputDataReceived += new DataReceivedEventHandler((sender, e) =>
+                {
+                    if (!String.IsNullOrEmpty(e.Data))
+                    {
+                        if (e.Data.Contains("ffmpeg"))
+                        {
+                            ffmpegPath = filename;
+                        }
+                    }
+                });
+
+                proc.Start();
+                proc.BeginOutputReadLine();
+                proc.WaitForExit();
+            }
+            catch (Exception ex)
+            {
+                log.Error($"FFMpeg Check error: {ex}");
+            }
+        }
+
+        public static async void CheckFFMpeg()
+        {
+            List<string> paths = Environment.GetEnvironmentVariable("PATH").Split(';').Where(v => v.Contains("ffmpeg")).Select(s => $@"{s}\ffmpeg.exe").Prepend("ffmpeg").ToList();
+            foreach (var item in paths)
+            {
+                StartFFMpegProcess(item);
+                if (ffmpegPath != null)
+                {
+                    break;
+                }
+            }
+            if (ffmpegPath != null)
+            {
+                log.Info($"Found ffmpeg");
+            }
+            else log.Warn("FFmpeg not found");
         }
 
         public class SongData : EventArgs
@@ -69,6 +143,31 @@ namespace AMDiscordRPC
                 this.StartTime = StartTime;
                 this.EndTime = EndTime;
                 this.AudioDetail = AudioDetail;
+            }
+        }
+
+        public class S3_Creds
+        {
+            public string accessKey { get; set; }
+            public string secretKey { get; set; }
+            public string serviceURL { get; set; }
+            public string bucketName { get; set; }
+            public string bucketURL { get; set; }
+            public bool? isSpecificKey { get; set; }
+
+            public S3_Creds(string accessKey, string secretKey, string serviceURL, string bucketName, string bucketURL, bool? isSpecificKey)
+            {
+                this.accessKey = accessKey;
+                this.secretKey = secretKey;
+                this.serviceURL = serviceURL;
+                this.bucketName = bucketName;
+                this.bucketURL = bucketURL;
+                this.isSpecificKey = isSpecificKey;
+            }
+
+            public List<string> GetNullKeys()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) == null).Select(p => p.Name).ToList();
             }
         }
     }
