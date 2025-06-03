@@ -17,13 +17,16 @@ namespace AMDiscordRPC
 
         public static void InitS3()
         {
-            BasicAWSCredentials credentials = new BasicAWSCredentials(S3_Credentials.accessKey, S3_Credentials.secretKey);
-            s3Client = new AmazonS3Client(credentials, new AmazonS3Config
+            if (S3_Credentials != null && S3_Credentials.GetNullKeys().Count == 0)
             {
-                ServiceURL = S3_Credentials.serviceURL,
-                RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
-                ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
-            });
+                BasicAWSCredentials credentials = new BasicAWSCredentials(S3_Credentials.accessKey, S3_Credentials.secretKey);
+                s3Client = new AmazonS3Client(credentials, new AmazonS3Config
+                {
+                    ServiceURL = S3_Credentials.serviceURL,
+                    RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+                    ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
+                });
+            }
         }
 
         public static async Task<string> PutGIF(string path, string filename)
@@ -37,7 +40,7 @@ namespace AMDiscordRPC
 
             PutObjectResponse response = await s3Client.PutObjectAsync(request);
 
-            return S3_Credentials.bucketURL + ((S3_Credentials.isSpecificKey) ? filename : $"{S3_Credentials.bucketName}/{filename}");
+            return S3_Credentials.bucketURL + ((S3_Credentials?.isSpecificKey == true) ? filename : $"{S3_Credentials.bucketName}/{filename}");
         }
     }
 }

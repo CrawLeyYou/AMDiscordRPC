@@ -11,8 +11,8 @@ namespace AMDiscordRPC
 {
     public class Discord
     {
-        private static Thread thread;
-        public static Task animatedCoverThread;
+        private static Thread thread = null;
+        public static CancellationTokenSource animatedCoverCts;
 
         public static void InitializeDiscordRPC()
         {
@@ -64,14 +64,18 @@ namespace AMDiscordRPC
         {
             oldData.Assets.LargeImageKey = coverURL;
             client.SetPresence(oldData);
-            animatedCoverThread = null;
+            animatedCoverCts = null;
         }
 
         public static void SetPresence(SongData x, string[] resp)
         {
             log.Debug($"Timestamps {x.StartTime}/{x.EndTime}");
             if (thread != null) thread.Abort();
-            if (animatedCoverThread != null) animatedCoverThread.Dispose();
+            if (animatedCoverCts != null)
+            {
+                animatedCoverCts.Cancel();
+                animatedCoverCts.Dispose();
+            }
             oldData = new RichPresence()
             {
                 Type = ActivityType.Listening,
@@ -95,11 +99,11 @@ namespace AMDiscordRPC
                 }
             };
             client.SetPresence(oldData);
-            if (resp[0].Contains(S3_Credentials.bucketURL) == false)
+            if (resp?[0] is { Length: > 0 } && !resp[0].Contains((S3_Credentials != null) ? S3_Credentials.bucketURL : ""))
             {
-                Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp[1]));
+                animatedCoverCts = new CancellationTokenSource();
+                Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp[1], animatedCoverCts.Token));
                 t.Start();
-                animatedCoverThread = t;
             }
         }
     }

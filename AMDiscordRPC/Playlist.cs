@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using static AMDiscordRPC.Discord;
@@ -20,40 +21,48 @@ namespace AMDiscordRPC
 {
     internal class Playlist
     {
-        public static async Task<string> ConvertM3U8(string album, string playlistUrl)
+        public static async Task ConvertM3U8(string album, string playlistUrl, CancellationToken ct)
         {
             // ^I thought storing Master Playlist would be better for in case of bucket changes and Apple's codec changes on lowest quality.
             Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, true, playlistUrl, null));
             StreamInf playlist = await FetchResolution(playlistUrl);
-            if (playlist != null)
+            if (!ct.IsCancellationRequested && playlist != null)
             {
                 string[] splitUrl = playlist.Uri.Split('/');
+                if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                 string fileName = await FetchFileName(playlist.Uri);
                 string newURL = string.Join("/", splitUrl.Take(splitUrl.Length - 1)) + $"/{fileName}";
+                string servedPath = null;
+                string gifPath = null;
                 Directory.CreateDirectory($@"{Application.StartupPath}\temp\");
                 try
                 {
+                    if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                     using (WebClient client = new WebClient())
                     {
                         client.DownloadFile(newURL, $@"{Application.StartupPath}\temp\{fileName}");
                     }
                     log.Debug("Downloaded cover");
-                    string gifPath = await ConvertToGIF(fileName, playlist.FrameRate);
+                    if (ct.IsCancellationRequested) throw new Exception("Cancelled");
+                    if (ffmpegPath != null) gifPath = await ConvertToGIF(fileName, playlist.FrameRate);
+                    else throw new Exception("FFmpeg not found");
                     log.Debug($"Converted to GIF. Path: {gifPath}");
-                    string servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
+                    if (ct.IsCancellationRequested) throw new Exception("Cancelled");
+                    if (S3_Credentials != null && S3_Credentials.GetNullKeys().Count == 0) servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
+                    else throw new Exception("S3 is not properly configured.");
                     log.Debug("Put S3 Bucket");
+                    if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                     Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, null, null, servedPath));
+                    if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                     SetCover(servedPath);
                     log.Debug("Set Animated Cover");
                 }
                 catch (Exception e)
                 {
                     log.Error($"Download failed: {e}");
-                    return null;
                 }
             }
-            Discord.animatedCoverThread = null;
-            return null;
+            Discord.animatedCoverCts = null;
         }
 
         public static async Task<string> FetchFileName(string playlistUrl)

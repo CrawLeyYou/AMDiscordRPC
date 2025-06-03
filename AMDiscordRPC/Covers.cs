@@ -51,7 +51,7 @@ namespace AMDiscordRPC
             }
         }
 
-        public static async Task CheckAnimatedCover(string album, string url)
+        public static async Task CheckAnimatedCover(string album, string url, CancellationToken ct)
         {
             try
             {
@@ -60,40 +60,34 @@ namespace AMDiscordRPC
                 {
                     string DOMasAString = await appleMusicDom.Content.ReadAsStringAsync();
                     IHtmlDocument document = parser.ParseDocument(DOMasAString);
-                    await ConvertM3U8(album, document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0]);
+                    ConvertM3U8(album, document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0], ct);
                 }
                 else
                 {
                     log.Error($"Apple Music request failed");
-                    Discord.animatedCoverThread = null;
+                    Discord.animatedCoverCts = null;
                 }
             }
             catch (Exception e)
             {
                 log.Error($"Apple Music animatedCover exception: {e.Message}");
-                Discord.animatedCoverThread = null;
+                Discord.animatedCoverCts = null;
                 Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, false, null, null));
             }
         }
 
         public static async Task<string[]> GetCover(string album, string searchStr)
         {
-            try { 
+            try
+            {
                 Database.SQLCoverResponse cover = Database.GetAlbumDataFromSQL(album);
                 if (cover != null)
                 {
-                    string[] res = { (cover.animated == true) ? cover.animatedURL : (cover.source != null) ? cover.source : throw new Exception("Source not found."), cover.redirURL, album};
-                    if (cover.animated == null && cover.redirURL != null)
-                    {
-                        if (Discord.animatedCoverThread != null) Discord.animatedCoverThread.Dispose();
-                        Task t = new Task(() => CheckAnimatedCover(album, cover.redirURL));
-                        t.Start();
-                        Discord.animatedCoverThread = t;
-                    }
+                    string[] res = { (cover.animated == true && cover.animatedURL != null) ? cover.animatedURL : (cover.source != null) ? cover.source : throw new Exception("Source not found."), cover.redirURL, album };
                     return res;
                 }
                 else return await AsyncFetchiTunes(album, searchStr);
-            } 
+            }
             catch (Exception ex)
             {
                 return await AsyncFetchiTunes(album, searchStr);

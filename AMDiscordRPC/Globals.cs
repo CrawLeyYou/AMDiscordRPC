@@ -66,7 +66,13 @@ namespace AMDiscordRPC
             {
                 while (dbResp.Read())
                 {
-                    S3_Credentials = new S3_Creds(dbResp.GetString(0), dbResp.GetString(1), dbResp.GetString(2), dbResp.GetString(3), dbResp.GetString(4), dbResp.GetBoolean(5));
+                    S3_Credentials = new S3_Creds(
+                        ((!dbResp.IsDBNull(0)) ? dbResp.GetString(0) : null),
+                        ((!dbResp.IsDBNull(1)) ? dbResp.GetString(1) : null),
+                        ((!dbResp.IsDBNull(2)) ? dbResp.GetString(2) : null),
+                        ((!dbResp.IsDBNull(3)) ? dbResp.GetString(3) : null),
+                        ((!dbResp.IsDBNull(4)) ? dbResp.GetString(4) : null),
+                        ((!dbResp.IsDBNull(5)) ? dbResp.GetBoolean(5) : null));
                 }
             }
         }
@@ -147,9 +153,9 @@ namespace AMDiscordRPC
             public string serviceURL { get; set; }
             public string bucketName { get; set; }
             public string bucketURL { get; set; }
-            public bool isSpecificKey { get; set; }
+            public bool? isSpecificKey { get; set; }
 
-            public S3_Creds(string accessKey, string secretKey, string serviceURL, string bucketName, string bucketURL, bool isSpecificKey)
+            public S3_Creds(string accessKey, string secretKey, string serviceURL, string bucketName, string bucketURL, bool? isSpecificKey)
             {
                 this.accessKey = accessKey;
                 this.secretKey = secretKey;
@@ -157,6 +163,11 @@ namespace AMDiscordRPC
                 this.bucketName = bucketName;
                 this.bucketURL = bucketURL;
                 this.isSpecificKey = isSpecificKey;
+            }
+
+            public List<string> GetNullKeys()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) == null).Select(p => p.Name).ToList();
             }
         }
     }
