@@ -33,7 +33,9 @@ After creating the API key save these
 
 ## Adding values to app
 You need to launch 1.2.0+ version atleast once to create Database for the program.
+
 After your first launch you need to have SQLite client like datagrip to interact with that database
+
 You need to use this command with values you got first stage (This example only valid for the instruction above)
 ```
 INSERT INTO creds (S3_accessKey, S3_secretKey, S3_serviceURL, S3_bucketName, S3_bucketURL, S3_isSpecificKey) VALUES ('Access-Key-ID', 'Secret-key', 'jurisdiction-specific endpoints', 'Bucket-Name', 'https://your.domain/', true);
