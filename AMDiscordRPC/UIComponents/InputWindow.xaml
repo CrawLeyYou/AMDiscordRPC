@@ -1,0 +1,17 @@
+﻿<Window x:Class="AMDiscordRPC.UIComponents.InputWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:AMDiscordRPC.UIComponents"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800" d:MaxHeight="450" d:MaxWidth="800" d:ResizeMode="NoResize" ResizeMode="NoResize" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen" Title="Enter S3 Values">
+    <Grid Height="450" Width="800" MaxHeight="450" MaxWidth="800">
+        <TextBox x:Name="AccessKeyIDBox" HorizontalAlignment="Center" Margin="0,133,0,0" TextWrapping="Wrap" Text="Access Key ID" VerticalAlignment="Top" Width="394" />
+        <TextBox x:Name="SecretKeyBox" HorizontalAlignment="Center" Margin="0,166,0,0" TextWrapping="Wrap" Text="Secret Access Key" VerticalAlignment="Top" Width="394"/>
+        <TextBox x:Name="EndpointBox" HorizontalAlignment="Center" TextWrapping="Wrap" Text="Jurisdiction-Specific Endpoint" VerticalAlignment="Top" Width="394" Margin="0,199,0,0" />
+        <TextBox x:Name="BucketNameBox" HorizontalAlignment="Center" Margin="0,232,0,0" TextWrapping="Wrap" Text="Bucket Name" VerticalAlignment="Top" Width="394" />
+        <TextBox x:Name="PublicBucketURLBox" HorizontalAlignment="Center" Margin="0,265,0,0" TextWrapping="Wrap" Text="https://your.domain/" VerticalAlignment="Top" Width="394"/>
+        <CheckBox x:Name="IsSpecificKeyBox" Content="Is key specific to one bucket?" HorizontalAlignment="Left" Margin="203,292,0,0" VerticalAlignment="Top"/>
+    </Grid>
+</Window>
