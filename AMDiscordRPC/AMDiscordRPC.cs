@@ -12,6 +12,7 @@ using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.S3;
+using static AMDiscordRPC.UI;
 
 namespace AMDiscordRPC
 {
@@ -20,6 +21,7 @@ namespace AMDiscordRPC
         private static string oldAlbumnArtist;
         static void Main(string[] args)
         {
+            CreateUI();
             ConfigureLogger();
             InitializeDiscordRPC();
             AttachToAppleMusic();
