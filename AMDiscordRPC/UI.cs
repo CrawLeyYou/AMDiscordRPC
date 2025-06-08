@@ -14,7 +14,7 @@ namespace AMDiscordRPC
                 app.Run(new UIComponents.InputWindow());
             });
 
-            thread.SetApartmentState(ApartmentState.STA); // Must be set before starting the thread
+            thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
         }
     }

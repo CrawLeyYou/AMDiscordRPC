@@ -169,6 +169,16 @@ namespace AMDiscordRPC
             {
                 return GetType().GetProperties().Where(s => s.GetValue(this) == null).Select(p => p.Name).ToList();
             }
+
+            public List<string> GetNotNullKeys()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) != null).Select(p => $"S3_{p.Name}").ToList();
+            }
+
+            public List<object> GetNotNullValues()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) != null).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
+            }
         }
     }
 }
