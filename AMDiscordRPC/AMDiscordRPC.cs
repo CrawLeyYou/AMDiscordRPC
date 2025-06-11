@@ -12,6 +12,7 @@ using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.S3;
+using static AMDiscordRPC.UI;
 
 namespace AMDiscordRPC
 {
@@ -20,12 +21,14 @@ namespace AMDiscordRPC
         private static string oldAlbumnArtist;
         static void Main(string[] args)
         {
+            CreateUI();
             ConfigureLogger();
             InitializeDiscordRPC();
             AttachToAppleMusic();
             AMSongDataEvent.SongChanged += async (sender, x) =>
              {
                  log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
+                 AMDiscordRPCTray.ChangeSongState($"{x.ArtistandAlbumName.Split('—')[0]} - {x.SongName}");
                  if (x.ArtistandAlbumName == oldAlbumnArtist && oldData.Assets.LargeImageKey != null)
                  {
                      SetPresence(x);
@@ -164,6 +167,7 @@ namespace AMDiscordRPC
                                 }
                                 else if (resetStatus == false && slider.AsSlider().Maximum != 0 && oldValue != 0 && currentSong == previousSong && currentArtistAlbum == previousArtistAlbum && startTime != endTime)
                                 {
+                                    AMDiscordRPCTray.ChangeSongState($"{((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())).Split('—')[0]} - {currentSong}");
                                     ChangeTimestamps(startTime, endTime);
                                     oldValue = slider.AsSlider().Value;
                                 }
@@ -218,11 +222,13 @@ namespace AMDiscordRPC
                                 if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))
                                 {
                                     localizedPlay = playButton.Name;
+                                    AMDiscordRPCTray.ChangeSongState("AMDiscordRPC");
                                     client.ClearPresence();
                                     resetStatus = true;
                                 }
                                 else if (resetStatus == true && playButton?.Name != null && localizedPlay != null && localizedPlay != playButton?.Name && slider.AsSlider().Maximum != 0)
                                 {
+                                    AMDiscordRPCTray.ChangeSongState($"{((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())).Split('—')[0]} - {currentSong}");
                                     ChangeTimestamps(startTime, endTime);
                                     resetStatus = false;
                                 }
