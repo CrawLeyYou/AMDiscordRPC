@@ -31,6 +31,7 @@ namespace AMDiscordRPC
         public static string[] httpRes = Array.Empty<string>();
         public static string ffmpegPath;
         public static S3_Creds S3_Credentials;
+        public static bool isS3Connected;
 
         public static void ConfigureLogger()
         {

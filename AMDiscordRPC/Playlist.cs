@@ -48,7 +48,7 @@ namespace AMDiscordRPC
                     else throw new Exception("FFmpeg not found");
                     log.Debug($"Converted to GIF. Path: {gifPath}");
                     if (ct.IsCancellationRequested) throw new Exception("Cancelled");
-                    if (S3_Credentials != null && S3_Credentials.GetNullKeys().Count == 0) servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
+                    if (isS3Connected) servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
                     else throw new Exception("S3 is not properly configured.");
                     log.Debug("Put S3 Bucket");
                     if (ct.IsCancellationRequested) throw new Exception("Cancelled");
