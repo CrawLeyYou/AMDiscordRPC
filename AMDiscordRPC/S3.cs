@@ -17,15 +17,27 @@ namespace AMDiscordRPC
 
         public static void InitS3()
         {
-            if (S3_Credentials != null && S3_Credentials.GetNullKeys().Count == 0)
+            try
             {
-                BasicAWSCredentials credentials = new BasicAWSCredentials(S3_Credentials.accessKey, S3_Credentials.secretKey);
-                s3Client = new AmazonS3Client(credentials, new AmazonS3Config
+                if (S3_Credentials != null && S3_Credentials.GetNullKeys().Count == 0)
                 {
-                    ServiceURL = S3_Credentials.serviceURL,
-                    RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
-                    ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
-                });
+                    BasicAWSCredentials credentials = new BasicAWSCredentials(S3_Credentials.accessKey, S3_Credentials.secretKey);
+                    s3Client = new AmazonS3Client(credentials, new AmazonS3Config
+                    {
+                        ServiceURL = S3_Credentials.serviceURL,
+                        RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+                        ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
+                    });
+                    isS3Connected = true;
+                }
+                else
+                {
+                    isS3Connected = false;
+                }
+            } catch (Exception e) 
+            {
+                isS3Connected = false;
+                log.Error(e);
             }
         }
 

@@ -12,7 +12,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static AMDiscordRPC.UI;
+using static AMDiscordRPC.Database;
 
 namespace AMDiscordRPC
 {
@@ -31,6 +34,8 @@ namespace AMDiscordRPC
         public static string[] httpRes = Array.Empty<string>();
         public static string ffmpegPath;
         public static S3_Creds S3_Credentials;
+        public static bool isS3Connected;
+        private static List<string> newMatchesArr;
 
         public static void ConfigureLogger()
         {
@@ -62,7 +67,7 @@ namespace AMDiscordRPC
 
         public static void InitDBCreds()
         {
-            using (SQLiteDataReader dbResp = Database.ExecuteReaderCommand("SELECT * FROM creds LIMIT 1"))
+            using (SQLiteDataReader dbResp = Database.ExecuteReaderCommand($"SELECT {string.Join(", ", Regex.Matches(Database.sqlMap["creds"], @"S3_\w+").FilterRepeatMatches())} FROM creds LIMIT 1"))
             {
                 while (dbResp.Read())
                 {
@@ -77,7 +82,7 @@ namespace AMDiscordRPC
             }
         }
 
-        private static void StartFFMpegProcess(string filename)
+        private static void StartFFmpegProcess(string filename)
         {
             try
             {
@@ -104,16 +109,22 @@ namespace AMDiscordRPC
             }
             catch (Exception ex)
             {
-                log.Error($"FFMpeg Check error: {ex}");
+                log.Error($"FFmpeg Check error: {ex}");
             }
         }
 
-        public static async void CheckFFMpeg()
+        public static async void CheckFFmpeg()
         {
-            List<string> paths = Environment.GetEnvironmentVariable("PATH").Split(';').Where(v => v.Contains("ffmpeg")).Select(s => $@"{s}\ffmpeg.exe").Prepend("ffmpeg").ToList();
-            foreach (var item in paths)
+            IEnumerable<string> paths = Environment.GetEnvironmentVariable("PATH").Split(';').Where(v => v.Contains("ffmpeg")).Select(s => $@"{s}\ffmpeg.exe").Prepend("ffmpeg");
+            object SQLQueryRes = ExecuteScalarCommand($"SELECT FFmpegPath from creds");
+
+            if (SQLQueryRes != null)
             {
-                StartFFMpegProcess(item);
+                paths.Append(SQLQueryRes.ToString());
+            }
+            foreach (var item in paths.ToList())
+            {
+                StartFFmpegProcess(item);
                 if (ffmpegPath != null)
                 {
                     break;
@@ -123,7 +134,7 @@ namespace AMDiscordRPC
             {
                 log.Info($"Found ffmpeg");
             }
-            else log.Warn("FFmpeg not found");
+            else FFmpegDialog();
         }
 
         public class SongData : EventArgs
@@ -144,6 +155,11 @@ namespace AMDiscordRPC
                 this.EndTime = EndTime;
                 this.AudioDetail = AudioDetail;
             }
+        }
+
+        public static List<string> FilterRepeatMatches(this MatchCollection matches)
+        {
+            return matches.Cast<Match>().Select(m => m.Value).Distinct().ToList();
         }
 
         public class S3_Creds
@@ -168,6 +184,16 @@ namespace AMDiscordRPC
             public List<string> GetNullKeys()
             {
                 return GetType().GetProperties().Where(s => s.GetValue(this) == null).Select(p => p.Name).ToList();
+            }
+
+            public List<string> GetNotNullKeys()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) != null).Select(p => $"S3_{p.Name}").ToList();
+            }
+
+            public List<object> GetNotNullValues()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) != null).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
             }
         }
     }
