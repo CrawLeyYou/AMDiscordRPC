@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Text.RegularExpressions;
+using System.Windows;
 using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC.UIComponents
@@ -31,13 +32,13 @@ namespace AMDiscordRPC.UIComponents
             {
                 if (Database.ExecuteScalarCommand("SELECT * FROM creds") == null)
                 {
-                    var res = Database.ExecuteNonQueryCommand($"INSERT INTO creds VALUES ({string.Join(", ", creds.GetNotNullValues())})");
+                    var res = Database.ExecuteNonQueryCommand($"INSERT INTO creds ({string.Join(", ", Regex.Matches(Database.sqlMap["creds"], @"S3_\w+").FilterRepeatMatches())}) VALUES ({string.Join(", ", creds.GetNotNullValues())})");
                     if (res != -1) MessageBox.Show("S3 Credentials Successfully Added to Database");
                     else MessageBox.Show("An error happened while inserting to database.");
                 }
                 else
                 {
-                    var res = Database.ExecuteNonQueryCommand($"UPDATE creds SET ({string.Join(", ", creds.GetNotNullKeys())}) = ({string.Join(", ", creds.GetNotNullValues())})");
+                    var res = Database.ExecuteNonQueryCommand($"UPDATE creds SET ({string.Join(", ", Regex.Matches(Database.sqlMap["creds"], @"S3_\w+").FilterRepeatMatches())}) = ({string.Join(", ", creds.GetNotNullValues())})");
                     if (res != -1) MessageBox.Show("S3 Credentials Successfully Updated");
                     else MessageBox.Show("An error happened while updating the database.");
                 }
