@@ -5,7 +5,12 @@ using System.Drawing;
 using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
+using Microsoft.Win32;
+using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.Database;
 using Application = System.Windows.Application;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using System.IO;
 
 namespace AMDiscordRPC
 {
@@ -17,7 +22,7 @@ namespace AMDiscordRPC
 
         public static void CreateUI()
         {
-            var thread = new Thread(() =>
+            Thread thread = new Thread(() =>
             {
                 new AMDiscordRPCTray();
                 app = new Application();
@@ -25,6 +30,39 @@ namespace AMDiscordRPC
                 app.Run();
             });
 
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+        }
+
+        public static void FFmpegDialog()
+        {
+            log.Warn("FFmpeg not found");
+            Thread thread = new Thread(() => {
+                if (System.Windows.MessageBox.Show("FFmpeg not found. Do you want to specify the path?", "FFmpeg not found.", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes) == MessageBoxResult.Yes)
+                {
+                    log.Debug("Yes");
+                    OpenFileDialog openFileDialog = new OpenFileDialog();
+                    openFileDialog.FileName = "ffmpeg";
+                    openFileDialog.DefaultExt = ".exe";
+                    openFileDialog.Filter = "Executables (.exe)|*.exe";
+                    openFileDialog.Multiselect = false;
+                    bool? openFileDialogRes = openFileDialog.ShowDialog();
+
+                    if (openFileDialogRes == true)
+                    {
+                        ffmpegPath = Path.GetDirectoryName(openFileDialog.FileName);
+                        if (ExecuteScalarCommand($"SELECT FFmpegPath from creds") != null)
+                            ExecuteNonQueryCommand($"UPDATE creds SET FFmpegPath = '{ffmpegPath}'");
+                        else
+                            ExecuteNonQueryCommand($"INSERT INTO creds (FFmpegPath) VALUES ('{ffmpegPath}')");
+                    }
+                }
+                else log.Debug("No");
+            });
+            /* 
+             * Dude why we need STA for simple OpenFileDialog 
+             * Update: Oh it was because Microsoft is lazy ass company that still uses COM which designed in 1990 and dont want to implement special support for older softwares and instead they force us to use STA :D
+            */
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
         }

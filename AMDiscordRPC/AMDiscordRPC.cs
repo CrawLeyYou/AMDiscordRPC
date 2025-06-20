@@ -46,7 +46,7 @@ namespace AMDiscordRPC
              };
             CheckDatabaseIntegrity();
             InitDBCreds();
-            CheckFFMpeg();
+            CheckFFmpeg();
             InitS3();
             AMEvent();
         }

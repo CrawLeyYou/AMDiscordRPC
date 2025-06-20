@@ -1,8 +1,8 @@
-name: Build .NET Framework
+name: Build .NET Framework (Dev Branch)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "dev" ]
 
 jobs:
   build:
@@ -25,6 +25,10 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.run_id }}
-        name: Release BuildID-${{ github.run_id }}
+        name: Dev-Release BuildID-${{ github.run_id }}
+        body: |
+          This is a pre-release build from the dev branch.
+          Don't use this version if you want more stable experience.
+        prerelease: true
         files: |
           Release.zip
