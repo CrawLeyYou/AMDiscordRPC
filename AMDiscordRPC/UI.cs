@@ -11,6 +11,7 @@ using static AMDiscordRPC.Database;
 using Application = System.Windows.Application;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using System.IO;
+using System.Diagnostics;
 
 namespace AMDiscordRPC
 {
@@ -96,6 +97,7 @@ namespace AMDiscordRPC
                      {
                          notifySongState,
                          s3Menu,
+                         new MenuItem("Show Latest Log", (s,e)  => { Process.Start("notepad", $"{Path.Combine(Directory.GetCurrentDirectory(), @"logs\latest.log")}"); }),
                          new MenuItem("Exit", (s, e) => { Environment.Exit(0); })
                      }
                 );

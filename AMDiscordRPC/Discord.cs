@@ -99,7 +99,7 @@ namespace AMDiscordRPC
                 }
             };
             client.SetPresence(oldData);
-            if (resp?[0] is { Length: > 0 } && !resp[0].Contains((S3_Credentials != null) ? S3_Credentials.bucketURL : ""))
+            if (resp?[0] is { Length: > 0 } && !resp[0].Contains((S3_Credentials != null) ? (S3_Credentials.GetNullKeys().Count == 0) ? S3_Credentials.bucketURL : "" : ""))
             {
                 animatedCoverCts = new CancellationTokenSource();
                 Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp[1], animatedCoverCts.Token));

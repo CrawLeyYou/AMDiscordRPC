@@ -15,5 +15,6 @@
         <CheckBox x:Name="IsSpecificKeyBox" Content="Is key specific to one bucket?" HorizontalAlignment="Left" Margin="203,292,0,0" VerticalAlignment="Top"/>
         <Button x:Name="button" Content="Set S3 Data" Margin="659.5,355,53.5,0" VerticalAlignment="Top" RenderTransformOrigin="0,0" Height="32" Foreground="Black" BorderBrush="#FFCCCCCC" Background="White" Click="button_Click">
         </Button>
+        <TextBlock x:Name="S3Connection" HorizontalAlignment="Left" Margin="718,10,0,0" TextWrapping="Wrap" Text="Disconnected" VerticalAlignment="Top" RenderTransformOrigin="0.454,1.506" Foreground="Black" Width="72" TextAlignment="Right"/>
     </Grid>
 </Window>

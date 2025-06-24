@@ -36,6 +36,12 @@ namespace AMDiscordRPC
         public static S3_Creds S3_Credentials;
         public static bool isS3Connected;
         private static List<string> newMatchesArr;
+        public enum S3ConnectionStatus
+        {
+            Connected,
+            Disconnected,
+            Error
+        }
 
         public static void ConfigureLogger()
         {
@@ -115,14 +121,14 @@ namespace AMDiscordRPC
 
         public static async void CheckFFmpeg()
         {
-            IEnumerable<string> paths = Environment.GetEnvironmentVariable("PATH").Split(';').Where(v => v.Contains("ffmpeg")).Select(s => $@"{s}\ffmpeg.exe").Prepend("ffmpeg");
+            List<string> paths = Environment.GetEnvironmentVariable("PATH").Split(';').Where(v => v.Contains("ffmpeg")).Select(s => $@"{s}\ffmpeg.exe").Prepend("ffmpeg").ToList() ;
             object SQLQueryRes = ExecuteScalarCommand($"SELECT FFmpegPath from creds");
 
             if (SQLQueryRes != null)
             {
-                paths.Append(SQLQueryRes.ToString());
+                paths.Add(SQLQueryRes.ToString() + "\\ffmpeg.exe");
             }
-            foreach (var item in paths.ToList())
+            foreach (string item in paths)
             {
                 StartFFmpegProcess(item);
                 if (ffmpegPath != null)
