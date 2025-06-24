@@ -30,14 +30,17 @@ namespace AMDiscordRPC
                         ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
                     });
                     S3Status = S3ConnectionStatus.Connected;
+                    InputWindow.ChangeS3Status(S3ConnectionStatus.Connected);
                 }
                 else
                 {
                     S3Status = S3ConnectionStatus.Disconnected;
+                    InputWindow.ChangeS3Status(S3ConnectionStatus.Disconnected);
                 }
             } catch (Exception e) 
             {
                 S3Status = S3ConnectionStatus.Error;
+                InputWindow.ChangeS3Status(S3ConnectionStatus.Error);
                 log.Error(e);
             }
         }
