@@ -6,12 +6,12 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using System.IO;
+using System.Diagnostics;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Database;
 using Application = System.Windows.Application;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
-using System.IO;
-using System.Diagnostics;
 
 namespace AMDiscordRPC
 {

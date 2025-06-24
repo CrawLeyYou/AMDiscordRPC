@@ -34,7 +34,6 @@ namespace AMDiscordRPC
         public static string[] httpRes = Array.Empty<string>();
         public static string ffmpegPath;
         public static S3_Creds S3_Credentials;
-        public static bool isS3Connected;
         private static List<string> newMatchesArr;
         public enum S3ConnectionStatus
         {
@@ -42,6 +41,7 @@ namespace AMDiscordRPC
             Disconnected,
             Error
         }
+        public static S3ConnectionStatus S3Status = S3ConnectionStatus.Disconnected;
 
         public static void ConfigureLogger()
         {

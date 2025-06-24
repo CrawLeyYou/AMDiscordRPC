@@ -7,8 +7,8 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using static AMDiscordRPC.Globals;
 using AMDiscordRPC.UIComponents;
+using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC
 {
@@ -29,18 +29,15 @@ namespace AMDiscordRPC
                         RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
                         ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
                     });
-                    isS3Connected = true;
-                    InputWindow.ChangeS3Status(S3ConnectionStatus.Connected);
+                    S3Status = S3ConnectionStatus.Connected;
                 }
                 else
                 {
-                    InputWindow.ChangeS3Status(S3ConnectionStatus.Disconnected);
-                    isS3Connected = false;
+                    S3Status = S3ConnectionStatus.Disconnected;
                 }
             } catch (Exception e) 
             {
-                isS3Connected = false;
-                InputWindow.ChangeS3Status(S3ConnectionStatus.Error);
+                S3Status = S3ConnectionStatus.Error;
                 log.Error(e);
             }
         }

@@ -4,9 +4,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.S3;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
-using static AMDiscordRPC.S3;
 
 namespace AMDiscordRPC.UIComponents
 {
@@ -21,7 +21,7 @@ namespace AMDiscordRPC.UIComponents
         {
             InitializeComponent();
             Instance = this;
-            ChangeS3Status((isS3Connected) ? S3ConnectionStatus.Connected : S3ConnectionStatus.Disconnected);
+            ChangeS3Status(S3Status);
         }
 
         private void button_Click(object sender, RoutedEventArgs e)
