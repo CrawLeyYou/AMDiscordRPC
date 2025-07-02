@@ -7,12 +7,12 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800" d:MaxHeight="450" d:MaxWidth="800" d:ResizeMode="NoResize" ResizeMode="NoResize" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen" Title="Enter S3 Values">
     <Grid Height="450" Width="800" MaxHeight="450" MaxWidth="800">
-        <TextBox x:Name="AccessKeyIDBox" HorizontalAlignment="Center" Margin="0,133,0,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Access Key ID" VerticalAlignment="Top" Width="394"/>
-        <TextBox x:Name="SecretKeyBox" HorizontalAlignment="Center" Margin="0,166,0,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Secret Access Key" VerticalAlignment="Top" Width="394"/>
-        <TextBox x:Name="EndpointBox" HorizontalAlignment="Center" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Jurisdiction-Specific Endpoint" VerticalAlignment="Top" Width="394" Margin="0,199,0,0" />
-        <TextBox x:Name="BucketNameBox" HorizontalAlignment="Center" Margin="0,232,0,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Bucket Name" VerticalAlignment="Top" Width="394" />
-        <TextBox x:Name="PublicBucketURLBox" HorizontalAlignment="Right" Margin="0,265,203,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="https://your.domain/" VerticalAlignment="Top" Width="394"/>
-        <CheckBox x:Name="IsSpecificKeyBox" Content="Is key specific to one bucket?" HorizontalAlignment="Left" Margin="203,292,0,0" VerticalAlignment="Top"/>
+        <TextBox x:Name="AccessKeyIDBox" MaxLines="1" HorizontalAlignment="Center" Margin="0,133,0,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Access Key ID" VerticalAlignment="Top" Width="430"/>
+        <TextBox x:Name="SecretKeyBox" MaxLines="1" HorizontalAlignment="Center" Margin="0,166,0,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Secret Access Key" VerticalAlignment="Top" Width="430"/>
+        <TextBox x:Name="EndpointBox" MaxLines="1" HorizontalAlignment="Center" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Jurisdiction-Specific Endpoint" VerticalAlignment="Top" Width="430" Margin="0,199,0,0" />
+        <TextBox x:Name="BucketNameBox" MaxLines="1" HorizontalAlignment="Center" Margin="0,232,0,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Bucket Name" VerticalAlignment="Top" Width="430" />
+        <TextBox x:Name="PublicBucketURLBox" MaxLines="1" HorizontalAlignment="Center" Margin="0,265,0,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="https://your.domain/" VerticalAlignment="Top" Width="430"/>
+        <CheckBox x:Name="IsSpecificKeyBox" Content="Is key specific to one bucket?" HorizontalAlignment="Left" Margin="185,293,0,0" VerticalAlignment="Top"/>
         <Button x:Name="button" Content="Set S3 Data" Margin="659.5,355,53.5,0" VerticalAlignment="Top" RenderTransformOrigin="0,0" Height="32" Foreground="Black" BorderBrush="#FFCCCCCC" Background="White" Click="button_Click">
         </Button>
         <TextBlock x:Name="S3Connection" HorizontalAlignment="Left" Margin="718,10,0,0" TextWrapping="Wrap" Text="Disconnected" VerticalAlignment="Top" RenderTransformOrigin="0.454,1.506" Foreground="Black" Width="72" TextAlignment="Right"/>

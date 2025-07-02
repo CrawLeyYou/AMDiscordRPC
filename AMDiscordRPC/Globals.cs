@@ -14,8 +14,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static AMDiscordRPC.UI;
 using static AMDiscordRPC.Database;
+using static AMDiscordRPC.UI;
 
 namespace AMDiscordRPC
 {
@@ -31,7 +31,7 @@ namespace AMDiscordRPC
         public static readonly Assembly assembly = Assembly.GetExecutingAssembly();
         public static HtmlParser parser = new HtmlParser();
         public static RichPresence oldData = new RichPresence();
-        public static string[] httpRes = Array.Empty<string>();
+        public static WebSongResponse httpRes = new WebSongResponse();
         public static string ffmpegPath;
         public static S3_Creds S3_Credentials;
         private static List<string> newMatchesArr;
@@ -40,6 +40,13 @@ namespace AMDiscordRPC
             Connected,
             Disconnected,
             Error
+        }
+        public enum AudioFormat
+        {
+            Lossless,
+            Dolby_Atmos,
+            Dolby_Audio,
+            AAC
         }
         public static S3ConnectionStatus S3Status = S3ConnectionStatus.Disconnected;
 
@@ -121,7 +128,7 @@ namespace AMDiscordRPC
 
         public static async void CheckFFmpeg()
         {
-            List<string> paths = Environment.GetEnvironmentVariable("PATH").Split(';').Where(v => v.Contains("ffmpeg")).Select(s => $@"{s}\ffmpeg.exe").Prepend("ffmpeg").ToList() ;
+            List<string> paths = Environment.GetEnvironmentVariable("PATH").Split(';').Where(v => v.Contains("ffmpeg")).Select(s => $@"{s}\ffmpeg.exe").Prepend("ffmpeg").ToList();
             object SQLQueryRes = ExecuteScalarCommand($"SELECT FFmpegPath from creds");
 
             if (SQLQueryRes != null)
@@ -150,16 +157,16 @@ namespace AMDiscordRPC
             public bool IsMV { get; set; }
             public DateTime StartTime { get; set; }
             public DateTime EndTime { get; set; }
-            public int AudioDetail { get; set; }
+            public AudioFormat format { get; set; }
 
-            public SongData(string SongName, string ArtistandAlbumName, bool IsMV, DateTime StartTime, DateTime EndTime, int AudioDetail)
+            public SongData(string SongName, string ArtistandAlbumName, bool IsMV, DateTime StartTime, DateTime EndTime, AudioFormat format)
             {
                 this.SongName = SongName;
                 this.ArtistandAlbumName = ArtistandAlbumName;
                 this.IsMV = IsMV;
                 this.StartTime = StartTime;
                 this.EndTime = EndTime;
-                this.AudioDetail = AudioDetail;
+                this.format = format;
             }
         }
 
@@ -200,6 +207,28 @@ namespace AMDiscordRPC
             public List<object> GetNotNullValues()
             {
                 return GetType().GetProperties().Where(s => s.GetValue(this) != null).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
+            }
+        }
+
+        public class WebSongResponse
+        {
+            public string artworkURL { get; set; }
+            public string trackURL { get; set; }
+            public string trackName { get; set; }
+
+            public WebSongResponse(string artworkURL = null, string trackURL = null, string trackName = null)
+            {
+                this.artworkURL = artworkURL;
+                this.trackURL = trackURL;
+                this.trackName = trackName;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is WebSongResponse other &&
+                       artworkURL == other.artworkURL &&
+                       trackURL == other.trackURL &&
+                       trackName == other.trackName;
             }
         }
     }

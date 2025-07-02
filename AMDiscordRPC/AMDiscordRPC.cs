@@ -35,10 +35,10 @@ namespace AMDiscordRPC
                  }
                  else
                  {
-                     if (httpRes == Array.Empty<string>() || CoverThread != null)
+                     if (httpRes.Equals(new WebSongResponse()) || CoverThread != null)
                      {
                          httpRes = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
-                         log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
+                         log.Debug($"Set Cover: {((httpRes.artworkURL != null) ? httpRes.artworkURL : null)}");
                      }
                      SetPresence(x, httpRes);
                      oldAlbumnArtist = x.ArtistandAlbumName;
@@ -127,7 +127,7 @@ namespace AMDiscordRPC
                     string previousSong = string.Empty;
                     string previousArtistAlbum = string.Empty;
                     string lastFetchedArtistAlbum = string.Empty;
-                    int audioStatus = 3;
+                    AudioFormat format = AudioFormat.AAC;
                     bool resetStatus = false;
                     double oldValue = 0;
 
@@ -185,7 +185,7 @@ namespace AMDiscordRPC
                                     Task t = new Task(async () =>
                                     {
                                         httpRes = await GetCover(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())) + $" {ConvertToValidString(currentSong)}"));
-                                        log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
+                                        log.Debug($"Set Cover: {((httpRes.artworkURL != null) ? httpRes.artworkURL : null)}");
                                     });
                                     CoverThread = t;
                                     t.Start();
@@ -202,21 +202,21 @@ namespace AMDiscordRPC
                                         switch (audioBadge?.Name)
                                         {
                                             case "Dolby Atmos":
-                                                audioStatus = 1;
+                                                format = AudioFormat.Dolby_Atmos;
                                                 break;
                                             case "Dolby Audio":
-                                                audioStatus = 2;
+                                                format = AudioFormat.Dolby_Audio;
                                                 break;
                                             default:
-                                                audioStatus = 0;
+                                                format = AudioFormat.Lossless;
                                                 break;
                                         }
                                     }
-                                    else audioStatus = 3;
+                                    else format = AudioFormat.AAC;
                                     oldValue = 0;
                                     oldStartTime = startTime;
                                     oldEndTime = endTime;
-                                    AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, audioStatus));
+                                    AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, format));
                                 }
 
                                 if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))

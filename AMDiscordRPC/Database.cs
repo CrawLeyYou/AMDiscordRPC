@@ -258,7 +258,7 @@ namespace AMDiscordRPC
             public string streamURL { get; set; }
             public string animatedURL { get; set; }
 
-            public SQLCoverResponse(string album, string source, string redirURL, bool? animated, string streamURL, string animatedURL)
+            public SQLCoverResponse(string album = null, string source = null, string redirURL = null, bool? animated = null, string streamURL = null, string animatedURL = null)
             {
                 this.album = album;
                 this.source = source;

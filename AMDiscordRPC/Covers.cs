@@ -12,7 +12,7 @@ namespace AMDiscordRPC
     {
         public static Task CoverThread;
 
-        public static async Task<String[]> AsyncFetchiTunes(string album, string searchStr)
+        private static async Task<WebSongResponse> AsyncFetchiTunes(string album, string searchStr)
         {
             try
             {
@@ -24,30 +24,35 @@ namespace AMDiscordRPC
                     dynamic imageRes = JObject.Parse(await iTunesReq.Content.ReadAsStringAsync());
                     if (imageRes["resultCount"] != 0)
                     {
-                        string[] res = { imageRes["results"][0]["artworkUrl100"].ToString(), imageRes["results"][0]["trackViewUrl"].ToString(), imageRes["results"][0]["collectionName"].ToString() };
-                        Database.UpdateAlbum(new Database.SQLCoverResponse(album, res[0], res[1], null, null, null));
+                        WebSongResponse webRes = new WebSongResponse
+                        (
+                            imageRes["results"][0]["artworkUrl100"].ToString(),
+                            imageRes["results"][0]["trackViewUrl"].ToString(),
+                            imageRes["results"][0]["collectionName"].ToString()
+                        );
+                        Database.UpdateAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL));
                         CoverThread = null;
-                        return res;
+                        return webRes;
                     }
                     else
                     {
                         log.Warn("iTunes no image found");
                         CoverThread = null;
-                        return Array.Empty<string>();
+                        return new WebSongResponse();
                     }
                 }
                 else
                 {
                     log.Warn("iTunes request failed");
                     CoverThread = null;
-                    return Array.Empty<string>();
+                    return new WebSongResponse();
                 }
             }
             catch (Exception e)
             {
                 log.Error($"iTunes Exception {e.Message}");
                 CoverThread = null;
-                return Array.Empty<string>();
+                return new WebSongResponse();
             }
         }
 
@@ -72,24 +77,35 @@ namespace AMDiscordRPC
             {
                 log.Error($"Apple Music animatedCover exception: {e.Message}");
                 Discord.animatedCoverCts = null;
-                Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, false, null, null));
+                Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, false));
             }
         }
 
-        public static async Task<string[]> GetCover(string album, string searchStr)
+        public static async Task<WebSongResponse> GetCover(string album, string searchStr)
         {
             try
             {
                 Database.SQLCoverResponse cover = Database.GetAlbumDataFromSQL(album);
                 if (cover != null)
                 {
-                    string[] res = { (cover.animated == true && cover.animatedURL != null) ? cover.animatedURL : (cover.source != null) ? cover.source : throw new Exception("Source not found."), cover.redirURL, album };
+                    WebSongResponse res = new WebSongResponse(
+                    (
+                        cover.animated == true && cover.animatedURL != null) ? cover.animatedURL : (cover.source != null) ? cover.source : throw new Exception("Source not found."),
+                        cover.redirURL,
+                        album
+                    );
+                    CoverThread = null;
                     return res;
                 }
-                else return await AsyncFetchiTunes(album, searchStr);
+                else
+                {
+                    CoverThread = null;
+                    return await AsyncFetchiTunes(album, searchStr);
+                }
             }
             catch (Exception ex)
             {
+                CoverThread = null;
                 return await AsyncFetchiTunes(album, searchStr);
             }
         }

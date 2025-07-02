@@ -24,7 +24,7 @@ namespace AMDiscordRPC
         public static async Task ConvertM3U8(string album, string playlistUrl, CancellationToken ct)
         {
             // ^I thought storing Master Playlist would be better for in case of bucket changes and Apple's codec changes on lowest quality.
-            Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, true, playlistUrl, null));
+            Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, true, playlistUrl));
             StreamInf playlist = await FetchResolution(playlistUrl);
             if (!ct.IsCancellationRequested && playlist != null)
             {

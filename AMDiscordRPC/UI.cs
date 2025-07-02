@@ -1,15 +1,15 @@
 ﻿using AMDiscordRPC.UIComponents;
+using Microsoft.Win32;
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
-using Microsoft.Win32;
-using System.IO;
-using System.Diagnostics;
-using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Database;
+using static AMDiscordRPC.Globals;
 using Application = System.Windows.Application;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
@@ -38,7 +38,8 @@ namespace AMDiscordRPC
         public static void FFmpegDialog()
         {
             log.Warn("FFmpeg not found");
-            Thread thread = new Thread(() => {
+            Thread thread = new Thread(() =>
+            {
                 if (System.Windows.MessageBox.Show("FFmpeg not found. Do you want to specify the path?", "FFmpeg not found.", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes) == MessageBoxResult.Yes)
                 {
                     log.Debug("Yes");

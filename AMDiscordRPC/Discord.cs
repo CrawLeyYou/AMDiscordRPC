@@ -51,10 +51,10 @@ namespace AMDiscordRPC
 
         private static async Task AsyncSetButton(SongData x)
         {
-            string[] resp = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+            WebSongResponse resp = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
             oldData.Buttons = new Button[]
             {
-                new Button() { Label = "Listen on Apple Music", Url = (resp.Length > 0) ? resp[1].Replace("https://", "music://") : "music://music.apple.com/home"}
+                new Button() { Label = "Listen on Apple Music", Url = (resp.trackURL != null) ? resp.trackURL.Replace("https://", "music://") : "music://music.apple.com/home"}
             };
             client.SetPresence(oldData);
             thread = null;
@@ -67,7 +67,7 @@ namespace AMDiscordRPC
             animatedCoverCts = null;
         }
 
-        public static void SetPresence(SongData x, string[] resp)
+        public static void SetPresence(SongData x, WebSongResponse resp)
         {
             log.Debug($"Timestamps {x.StartTime}/{x.EndTime}");
             if (thread != null) thread.Abort();
@@ -83,14 +83,14 @@ namespace AMDiscordRPC
                 State = $"by {((x.IsMV) ? x.ArtistandAlbumName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[0]))}",
                 Assets = new Assets()
                 {
-                    LargeImageKey = (resp.Length > 0) ? resp[0] : "",
-                    LargeImageText = (x.IsMV) ? resp[2] : ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]),
-                    SmallImageKey = (x.AudioDetail == 0) ? "lossless" : (x.AudioDetail == 1 || x.AudioDetail == 2) ? "dolbysimplified" : null,
-                    SmallImageText = (x.AudioDetail == 0) ? "Lossless" : (x.AudioDetail == 1) ? "Dolby Atmos" : (x.AudioDetail == 2) ? "Dolby Audio" : null,
+                    LargeImageKey = (resp.artworkURL != null) ? resp.artworkURL : "",
+                    LargeImageText = (x.IsMV) ? resp.trackName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]),
+                    SmallImageKey = (x.format == AudioFormat.Lossless) ? "lossless" : (x.format == AudioFormat.Dolby_Atmos || x.format == AudioFormat.Dolby_Audio) ? "dolbysimplified" : null,
+                    SmallImageText = (x.format == AudioFormat.Lossless) ? "Lossless" : (x.format == AudioFormat.Dolby_Atmos) ? "Dolby Atmos" : (x.format == AudioFormat.Dolby_Audio) ? "Dolby Audio" : null,
                 },
                 Buttons = new Button[]
                      {
-                         new Button() { Label = "Listen on Apple Music", Url = (resp.Length > 0) ? resp[1].Replace("https://", "music://") : "music://music.apple.com/home"}
+                         new Button() { Label = "Listen on Apple Music", Url = (resp.trackURL != null) ? resp.trackURL.Replace("https://", "music://") : "music://music.apple.com/home"}
                      },
                 Timestamps = new Timestamps()
                 {
@@ -99,10 +99,10 @@ namespace AMDiscordRPC
                 }
             };
             client.SetPresence(oldData);
-            if (resp?[0] is { Length: > 0 } && !resp[0].Contains((S3_Credentials != null) ? (S3_Credentials.GetNullKeys().Count == 0) ? S3_Credentials.bucketURL : "" : ""))
+            if (resp.artworkURL != null && !resp.artworkURL.Contains((S3_Credentials != null) ? (S3_Credentials.GetNullKeys().Count == 0) ? S3_Credentials.bucketURL : "" : ""))
             {
                 animatedCoverCts = new CancellationTokenSource();
-                Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp[1], animatedCoverCts.Token));
+                Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp.trackURL, animatedCoverCts.Token));
                 t.Start();
             }
         }

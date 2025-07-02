@@ -1,13 +1,13 @@
 ﻿using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
+using AMDiscordRPC.UIComponents;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using AMDiscordRPC.UIComponents;
 using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC
@@ -37,7 +37,8 @@ namespace AMDiscordRPC
                     S3Status = S3ConnectionStatus.Disconnected;
                     InputWindow.ChangeS3Status(S3ConnectionStatus.Disconnected);
                 }
-            } catch (Exception e) 
+            }
+            catch (Exception e)
             {
                 S3Status = S3ConnectionStatus.Error;
                 InputWindow.ChangeS3Status(S3ConnectionStatus.Error);

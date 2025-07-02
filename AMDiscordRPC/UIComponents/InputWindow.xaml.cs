@@ -43,7 +43,8 @@ namespace AMDiscordRPC.UIComponents
                 if (Database.ExecuteScalarCommand("SELECT S3_accessKey FROM creds") == null)
                 {
                     var res = Database.ExecuteNonQueryCommand($"INSERT INTO creds ({string.Join(", ", Regex.Matches(Database.sqlMap["creds"], @"S3_\w+").FilterRepeatMatches())}) VALUES ({string.Join(", ", creds.GetNotNullValues())})");
-                    if (res != -1) { 
+                    if (res != -1)
+                    {
                         S3_Credentials = creds;
                         MessageBox.Show("S3 Credentials Successfully Added to Database");
                         InitS3();
@@ -53,7 +54,8 @@ namespace AMDiscordRPC.UIComponents
                 else
                 {
                     var res = Database.ExecuteNonQueryCommand($"UPDATE creds SET ({string.Join(", ", Regex.Matches(Database.sqlMap["creds"], @"S3_\w+").FilterRepeatMatches())}) = ({string.Join(", ", creds.GetNotNullValues())})");
-                    if (res != -1) {
+                    if (res != -1)
+                    {
                         S3_Credentials = creds;
                         MessageBox.Show("S3 Credentials Successfully Updated");
                         InitS3();
@@ -67,7 +69,8 @@ namespace AMDiscordRPC.UIComponents
         {
             if (Instance == null) return;
 
-            switch (value) { 
+            switch (value)
+            {
                 case S3ConnectionStatus.Connected:
                     Instance.S3Connection.Text = "Connected";
                     Instance.S3Connection.Foreground = Brushes.Green;
