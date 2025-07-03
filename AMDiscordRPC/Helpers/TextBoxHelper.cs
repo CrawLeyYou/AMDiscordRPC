@@ -15,6 +15,12 @@ namespace AMDiscordRPC.Helpers
         public static void SetPlaceholder(DependencyObject obj, string value) =>
             obj.SetValue(PlaceholderProperty, value);
 
+        public static PlaceholderAdorner GetPlaceholderAdorner(TextBox obj)
+        {
+            GetOrCreateAdorner(obj, out PlaceholderAdorner adorner); 
+            return adorner;
+        }
+
         public static readonly DependencyProperty PlaceholderProperty =
             DependencyProperty.RegisterAttached(
                 "Placeholder",

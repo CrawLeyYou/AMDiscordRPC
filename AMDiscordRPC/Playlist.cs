@@ -51,7 +51,6 @@ namespace AMDiscordRPC
                     if (S3Status == S3ConnectionStatus.Connected) servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
                     else throw new Exception("S3 is not properly configured.");
                     log.Debug("Put S3 Bucket");
-                    if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                     Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, null, null, servedPath));
                     if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                     SetCover(servedPath);

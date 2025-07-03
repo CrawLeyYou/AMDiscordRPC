@@ -1,9 +1,11 @@
-﻿using System.Drawing;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.Helpers.TextBoxHelper;
 using static AMDiscordRPC.S3;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
@@ -22,6 +24,11 @@ namespace AMDiscordRPC.UIComponents
             InitializeComponent();
             Instance = this;
             ChangeS3Status(S3Status);
+            Instance.Loaded += (s, e) =>
+            {
+                if (S3_Credentials != null)
+                    PutValues(S3_Credentials);
+            };
         }
 
         private void button_Click(object sender, RoutedEventArgs e)
@@ -65,10 +72,25 @@ namespace AMDiscordRPC.UIComponents
             }
         }
 
+        private static void PutValues(S3_Creds creds)
+        {
+            List<TextBox> Instances = new List<TextBox> { Instance.AccessKeyIDBox, Instance.SecretKeyBox, Instance.EndpointBox, Instance.BucketNameBox, Instance.PublicBucketURLBox };
+            List<string> Keys = new List<string>() { creds.accessKey, creds.secretKey, creds.serviceURL, creds.bucketName, creds.bucketURL };
+            foreach (var (item, index) in Instances.Select((v, i) => (v, i)))
+            {
+                PlaceholderAdorner adorner = Helpers.TextBoxHelper.GetPlaceholderAdorner(item);
+                item.Text = Keys[index];
+                if (Keys[index].Length > 0)
+                    adorner.Visibility = Visibility.Hidden;
+                else 
+                    adorner.Visibility = Visibility.Visible;
+            }
+            Instance.IsSpecificKeyBox.IsChecked = creds.isSpecificKey;
+        }
+
         public static void ChangeS3Status(S3ConnectionStatus value)
         {
             if (Instance == null) return;
-
             switch (value)
             {
                 case S3ConnectionStatus.Connected:

@@ -99,13 +99,11 @@ namespace AMDiscordRPC
                 }
                 else
                 {
-                    CoverThread = null;
                     return await AsyncFetchiTunes(album, searchStr);
                 }
             }
             catch (Exception ex)
             {
-                CoverThread = null;
                 return await AsyncFetchiTunes(album, searchStr);
             }
         }
