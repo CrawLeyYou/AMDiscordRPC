@@ -214,6 +214,8 @@ namespace AMDiscordRPC
                                     }
                                     else format = AudioFormat.AAC;
                                     oldValue = 0;
+                                    startTime = currentTime.Subtract(subractThis);
+                                    endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(subractThis);
                                     oldStartTime = startTime;
                                     oldEndTime = endTime;
                                     AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, format));

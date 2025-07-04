@@ -18,6 +18,8 @@ namespace AMDiscordRPC.UIComponents
     public partial class InputWindow : Window
     {
         private static InputWindow Instance;
+        private enum ShowMode { Show, Hide }
+        private static ShowMode currentShowMode = ShowMode.Hide;
 
         public InputWindow()
         {
@@ -31,7 +33,7 @@ namespace AMDiscordRPC.UIComponents
             };
         }
 
-        private void button_Click(object sender, RoutedEventArgs e)
+        private void SetS3Button_Click(object sender, RoutedEventArgs e)
         {
             S3_Creds creds = new S3_Creds(
                 (AccessKeyIDBox.Text != "") ? AccessKeyIDBox.Text : null,
@@ -72,20 +74,24 @@ namespace AMDiscordRPC.UIComponents
             }
         }
 
-        private static void PutValues(S3_Creds creds)
+        private static void PutValues(S3_Creds creds, ShowMode mode = ShowMode.Hide)
         {
             List<TextBox> Instances = new List<TextBox> { Instance.AccessKeyIDBox, Instance.SecretKeyBox, Instance.EndpointBox, Instance.BucketNameBox, Instance.PublicBucketURLBox };
             List<string> Keys = new List<string>() { creds.accessKey, creds.secretKey, creds.serviceURL, creds.bucketName, creds.bucketURL };
             foreach (var (item, index) in Instances.Select((v, i) => (v, i)))
             {
                 PlaceholderAdorner adorner = Helpers.TextBoxHelper.GetPlaceholderAdorner(item);
-                item.Text = Keys[index];
+                item.Text = (mode == ShowMode.Show) ? Keys[index] : new string('*', Keys[index].Length);
+                item.IsEnabled = (mode == ShowMode.Show) ? true : false;
                 if (Keys[index].Length > 0)
                     adorner.Visibility = Visibility.Hidden;
                 else 
                     adorner.Visibility = Visibility.Visible;
             }
             Instance.IsSpecificKeyBox.IsChecked = creds.isSpecificKey;
+            Instance.ShowButton.Content = (mode == ShowMode.Show) ? "Hide" : "Show";
+            Instance.SetS3Button.IsEnabled = (mode == ShowMode.Show) ? true : false;
+            currentShowMode = mode;
         }
 
         public static void ChangeS3Status(S3ConnectionStatus value)
@@ -106,6 +112,12 @@ namespace AMDiscordRPC.UIComponents
                     Instance.S3Connection.Foreground = Brushes.Red;
                     break;
             }
+        }
+
+        private void ShowButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (S3_Credentials != null)
+                PutValues(S3_Credentials, (currentShowMode == ShowMode.Show) ? ShowMode.Hide : ShowMode.Show);
         }
     }
 }
