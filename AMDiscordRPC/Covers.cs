@@ -1,8 +1,12 @@
-﻿using AngleSharp.Html.Dom;
+﻿using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Data.SQLite;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Playlist;
 
@@ -18,7 +22,7 @@ namespace AMDiscordRPC
             {
                 //idk why but sometimes when you search as "Artist - Album Track" and if Album and Track named same it returns random song from album
                 //ex: "Poppy - Negative Spaces negative spaces" Returns "Poppy - New Way Out" as a track link
-                var iTunesReq = await hclient.GetAsync($"https://itunes.apple.com/search?term={searchStr}&limit=1&entity=song");
+                HttpResponseMessage iTunesReq = await hclient.GetAsync($"https://itunes.apple.com/search?term={searchStr}&limit=1&entity=song");
                 if (iTunesReq.IsSuccessStatusCode)
                 {
                     dynamic imageRes = JObject.Parse(await iTunesReq.Content.ReadAsStringAsync());
@@ -56,6 +60,36 @@ namespace AMDiscordRPC
             }
         }
 
+        public static async Task<WebSongResponse> AsyncAMFetch(string album, string searchStr) 
+        {
+            try
+            {
+                HttpResponseMessage AMRequest = await hclient.GetAsync($"https://music.apple.com/tr/search?term={searchStr}");
+                if (AMRequest.IsSuccessStatusCode)
+                {
+                    string DOMasAString = await AMRequest.Content.ReadAsStringAsync();
+                    IHtmlDocument document = parser.ParseDocument(DOMasAString);
+                    WebSongResponse webRes = new WebSongResponse(
+                        document.DocumentElement.QuerySelectorAll("div.top-search-lockup__artwork > div > picture > source")[1].GetAttribute("srcset").Split(' ')[0],
+                        document.DocumentElement.QuerySelector("div.top-search-lockup__action > a").GetAttribute("href")
+                    );
+                    CoverThread = null;
+                    Database.UpdateAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL));
+                    return webRes;
+                }
+                else 
+                {
+                    log.Error($"Apple Music request failed returned: {AMRequest.StatusCode}");
+                    return await AsyncFetchiTunes(album, searchStr);
+                }
+            }
+            catch (Exception e) 
+            {
+                log.Error($"Apple Music Request failed. {e}");
+                return await AsyncFetchiTunes(album, searchStr);
+            }
+        }
+
         public static async Task CheckAnimatedCover(string album, string url, CancellationToken ct)
         {
             try
@@ -85,12 +119,13 @@ namespace AMDiscordRPC
         {
             try
             {
-                Database.SQLCoverResponse cover = Database.GetAlbumDataFromSQL(album);
+                log.Debug($"https://music.apple.com/us/search?term={searchStr}");
+                SQLCoverResponse cover = GetAlbumDataFromSQL(album);
                 if (cover != null)
                 {
-                    WebSongResponse res = new WebSongResponse(
+                    WebSongResponse res = new WebSongResponse
                     (
-                        cover.animated == true && cover.animatedURL != null) ? cover.animatedURL : (cover.source != null) ? cover.source : throw new Exception("Source not found."),
+                        (cover.animated == true && cover.animatedURL != null) ? cover.animatedURL : (cover.source != null) ? cover.source : throw new Exception("Source not found."),
                         cover.redirURL,
                         album
                     );
@@ -99,14 +134,16 @@ namespace AMDiscordRPC
                 }
                 else
                 {
-                    return await AsyncFetchiTunes(album, searchStr);
+                    return await AsyncAMFetch(album, searchStr);
                 }
             }
             catch (Exception ex)
             {
-                return await AsyncFetchiTunes(album, searchStr);
+                return await AsyncAMFetch(album, searchStr);
             }
         }
+
+        
 
         /* I realized we don't need Last.fm API to be here, bc we are making Apple Music RPC aren't we? so i decided to just use iTunes and go on.
         * might add later for the situation where iTunes api is down.

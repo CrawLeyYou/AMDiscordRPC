@@ -277,6 +277,7 @@ namespace AMDiscordRPC
             {
                 return GetType().GetProperties().Where(s => s.GetValue(this) != null && s.GetValue(this) != this.album).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
             }
+
         }
     }
 }
