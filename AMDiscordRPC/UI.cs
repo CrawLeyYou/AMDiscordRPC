@@ -1,7 +1,5 @@
 ﻿using AMDiscordRPC.UIComponents;
-using Microsoft.Win32;
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;

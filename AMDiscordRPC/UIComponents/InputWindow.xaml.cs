@@ -3,11 +3,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Helpers.TextBoxHelper;
 using static AMDiscordRPC.S3;
-using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
 
 namespace AMDiscordRPC.UIComponents
@@ -85,7 +83,7 @@ namespace AMDiscordRPC.UIComponents
                 item.IsEnabled = (mode == ShowMode.Show) ? true : false;
                 if (Keys[index].Length > 0)
                     adorner.Visibility = Visibility.Hidden;
-                else 
+                else
                     adorner.Visibility = Visibility.Visible;
             }
             Instance.IsSpecificKeyBox.IsChecked = creds.isSpecificKey;

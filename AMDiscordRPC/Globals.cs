@@ -1,10 +1,8 @@
-﻿using AngleSharp.Common;
-using AngleSharp.Html.Parser;
+﻿using AngleSharp.Html.Parser;
 using DiscordRPC;
 using DiscordRPC.Helper;
 using log4net;
 using log4net.Config;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
@@ -15,7 +13,6 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.UI;
 
@@ -68,10 +65,19 @@ namespace AMDiscordRPC
             CookieContainer cookies = new CookieContainer();
             HClientHandlerhandler.CookieContainer = cookies;
             HttpClient httpClient = new HttpClient(HClientHandlerhandler);
-            
-            _ = httpClient.GetAsync("https://music.apple.com/").Result;
 
-            AMRegion = cookies.GetCookies(new Uri("https://music.apple.com/")).Cast<Cookie>().Where(cookie => cookie.Name == "geo").ToList()[0].Value;
+            try
+            {
+                _ = httpClient.GetAsync("https://music.apple.com/").Result;
+
+                AMRegion = cookies.GetCookies(new Uri("https://music.apple.com/")).Cast<Cookie>()
+                    .Where(cookie => cookie.Name == "geo").ToList()[0].Value;
+            }
+            catch (Exception e)
+            {
+                log.Error($"Error happened while trying to select region, falling back to US Apple Music. Cause: {e}");
+                AMRegion = "US";
+            }
         }
 
         public class AMSongDataEvent
@@ -85,6 +91,7 @@ namespace AMDiscordRPC
 
         public static string ConvertToValidString(string data)
         {
+            //We dont need byte validation anymore because of this fix https://github.com/Lachee/discord-rpc-csharp/pull/259. Going to change this method soon.
             if (!data.WithinLength(125, Encoding.UTF8))
             {
                 byte[] byteArr = Encoding.UTF8.GetBytes(data);

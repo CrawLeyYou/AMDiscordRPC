@@ -5,7 +5,6 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using static AMDiscordRPC.AppleMusic;
 using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Database;

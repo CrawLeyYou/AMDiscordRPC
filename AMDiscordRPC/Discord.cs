@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using System.Web;
 using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Globals;
-using static AMDiscordRPC.Playlist;
 
 namespace AMDiscordRPC
 {
@@ -80,7 +79,8 @@ namespace AMDiscordRPC
             {
                 Type = ActivityType.Listening,
                 Details = ConvertToValidString(x.SongName),
-                State = $"by {((x.IsMV) ? x.ArtistandAlbumName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[0]))}",
+                StatusDisplay = StatusDisplayType.State,
+                State = (x.IsMV) ? x.ArtistandAlbumName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[0]),
                 Assets = new Assets()
                 {
                     LargeImageKey = (resp.artworkURL != null) ? resp.artworkURL : "",

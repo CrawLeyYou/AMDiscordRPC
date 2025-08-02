@@ -1,8 +1,6 @@
-﻿using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
+﻿using AngleSharp.Html.Dom;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Data.SQLite;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -60,7 +58,7 @@ namespace AMDiscordRPC
             }
         }
 
-        public static async Task<WebSongResponse> AsyncAMFetch(string album, string searchStr) 
+        public static async Task<WebSongResponse> AsyncAMFetch(string album, string searchStr)
         {
             try
             {
@@ -77,13 +75,13 @@ namespace AMDiscordRPC
                     Database.UpdateAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL));
                     return webRes;
                 }
-                else 
+                else
                 {
                     log.Error($"Apple Music request failed returned: {AMRequest.StatusCode}");
                     return await AsyncFetchiTunes(album, searchStr);
                 }
             }
-            catch (Exception e) 
+            catch (Exception e)
             {
                 log.Error($"Apple Music Request failed. {e}");
                 return await AsyncFetchiTunes(album, searchStr);
@@ -143,7 +141,7 @@ namespace AMDiscordRPC
             }
         }
 
-        
+
 
         /* I realized we don't need Last.fm API to be here, bc we are making Apple Music RPC aren't we? so i decided to just use iTunes and go on.
         * might add later for the situation where iTunes api is down.

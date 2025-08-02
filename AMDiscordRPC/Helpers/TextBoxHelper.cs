@@ -17,7 +17,7 @@ namespace AMDiscordRPC.Helpers
 
         public static PlaceholderAdorner GetPlaceholderAdorner(TextBox obj)
         {
-            GetOrCreateAdorner(obj, out PlaceholderAdorner adorner); 
+            GetOrCreateAdorner(obj, out PlaceholderAdorner adorner);
             return adorner;
         }
 

@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC
