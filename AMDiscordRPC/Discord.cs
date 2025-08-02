@@ -51,7 +51,7 @@ namespace AMDiscordRPC
 
         private static async Task AsyncSetButton(SongData x)
         {
-            WebSongResponse resp = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+            WebSongResponse resp = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(x.ArtistandAlbumName + $" {x.SongName}"));
             oldData.Buttons = new Button[]
             {
                 new Button() { Label = "Listen on Apple Music", Url = (resp.trackURL != null) ? resp.trackURL.Replace("https://", "music://") : "music://music.apple.com/home"}
@@ -84,7 +84,7 @@ namespace AMDiscordRPC
                 Assets = new Assets()
                 {
                     LargeImageKey = (resp.artworkURL != null) ? resp.artworkURL : "",
-                    LargeImageText = (x.IsMV) ? resp.trackName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]),
+                    LargeImageText = (x.IsMV && resp.trackName != null) ? resp.trackName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]),
                     SmallImageKey = (x.format == AudioFormat.Lossless) ? "lossless" : (x.format == AudioFormat.Dolby_Atmos || x.format == AudioFormat.Dolby_Audio) ? "dolbysimplified" : null,
                     SmallImageText = (x.format == AudioFormat.Lossless) ? "Lossless" : (x.format == AudioFormat.Dolby_Atmos) ? "Dolby Atmos" : (x.format == AudioFormat.Dolby_Audio) ? "Dolby Audio" : null,
                 },

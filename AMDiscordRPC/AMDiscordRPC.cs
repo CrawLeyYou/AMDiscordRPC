@@ -21,6 +21,7 @@ namespace AMDiscordRPC
         private static string oldAlbumnArtist;
         static void Main(string[] args)
         {
+            InitRegion();
             CreateUI();
             ConfigureLogger();
             InitializeDiscordRPC();
@@ -37,7 +38,7 @@ namespace AMDiscordRPC
                  {
                      if (httpRes.Equals(new WebSongResponse()) || CoverThread != null)
                      {
-                         httpRes = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
+                         httpRes = await GetCover(x.ArtistandAlbumName.Split('—')[1], Uri.EscapeDataString(x.ArtistandAlbumName + $" {x.SongName}"));
                          log.Debug($"Set Cover: {((httpRes.artworkURL != null) ? httpRes.artworkURL : null)}");
                      }
                      SetPresence(x, httpRes);
@@ -184,7 +185,7 @@ namespace AMDiscordRPC
                                     CheckAndInsertAlbum(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1]);
                                     Task t = new Task(async () =>
                                     {
-                                        httpRes = await GetCover(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())) + $" {ConvertToValidString(currentSong)}"));
+                                        httpRes = await GetCover(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1], Uri.EscapeDataString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()) + $" {currentSong}"));
                                         log.Debug($"Set Cover: {((httpRes.artworkURL != null) ? httpRes.artworkURL : null)}");
                                     });
                                     CoverThread = t;
