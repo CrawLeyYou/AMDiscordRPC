@@ -1,4 +1,5 @@
-﻿using AngleSharp.Html.Parser;
+﻿using AngleSharp.Common;
+using AngleSharp.Html.Parser;
 using DiscordRPC;
 using DiscordRPC.Helper;
 using log4net;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Text;
@@ -49,6 +51,8 @@ namespace AMDiscordRPC
             AAC
         }
         public static S3ConnectionStatus S3Status = S3ConnectionStatus.Disconnected;
+        public static string AMRegion;
+
 
         public static void ConfigureLogger()
         {
@@ -56,6 +60,18 @@ namespace AMDiscordRPC
             {
                 XmlConfigurator.Configure(stream);
             }
+        }
+
+        public static async void InitRegion()
+        {
+            HttpClientHandler HClientHandlerhandler = new HttpClientHandler();
+            CookieContainer cookies = new CookieContainer();
+            HClientHandlerhandler.CookieContainer = cookies;
+            HttpClient httpClient = new HttpClient(HClientHandlerhandler);
+            
+            _ = httpClient.GetAsync("https://music.apple.com/").Result;
+
+            AMRegion = cookies.GetCookies(new Uri("https://music.apple.com/")).Cast<Cookie>().Where(cookie => cookie.Name == "geo").ToList()[0].Value;
         }
 
         public class AMSongDataEvent

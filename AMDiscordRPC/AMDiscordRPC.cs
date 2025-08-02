@@ -21,7 +21,7 @@ namespace AMDiscordRPC
         private static string oldAlbumnArtist;
         static void Main(string[] args)
         {
-          //  InitRegion();
+            InitRegion();
             CreateUI();
             ConfigureLogger();
             InitializeDiscordRPC();

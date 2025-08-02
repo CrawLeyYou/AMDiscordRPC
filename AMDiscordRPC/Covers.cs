@@ -64,7 +64,7 @@ namespace AMDiscordRPC
         {
             try
             {
-                HttpResponseMessage AMRequest = await hclient.GetAsync($"https://music.apple.com/tr/search?term={searchStr}");
+                HttpResponseMessage AMRequest = await hclient.GetAsync($"https://music.apple.com/{AMRegion.ToLower()}/search?term={searchStr}");
                 if (AMRequest.IsSuccessStatusCode)
                 {
                     string DOMasAString = await AMRequest.Content.ReadAsStringAsync();
