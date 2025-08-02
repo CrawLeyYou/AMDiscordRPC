@@ -101,7 +101,7 @@ namespace AMDiscordRPC
                      }
                 );
 
-                notifyIcon.Icon = new Icon("MacOS_Big_Sur_logo.ico");
+                notifyIcon.Icon = Properties.Resources.Logo_Black_32;
                 notifyIcon.ContextMenu = contextMenu;
                 notifyIcon.Text = "AMDiscordRPC";
                 notifyIcon.Visible = true;

@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:helpers="clr-namespace:AMDiscordRPC.Helpers"
              mc:Ignorable="d" 
+             Icon="../Resources/Logo Black 32.ico"
              d:DesignHeight="450" d:DesignWidth="800" d:MaxHeight="450" d:MaxWidth="800" d:ResizeMode="NoResize" ResizeMode="NoResize" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen" Title="Enter S3 Values">
     <Grid Height="450" Width="800" MaxHeight="450" MaxWidth="800">
         <TextBox x:Name="AccessKeyIDBox" MaxLines="1" HorizontalAlignment="Center" Margin="0,133,0,0" TextWrapping="Wrap" helpers:TextBoxHelper.Placeholder="Access Key ID" VerticalAlignment="Top" Width="430"/>

@@ -32,17 +32,9 @@ After creating the API key save these
 ![image](https://github.com/user-attachments/assets/49713dfe-5b08-4bd5-a011-63f53568024b)
 
 ## Adding values to app
-You need to launch 1.2.0+ version atleast once to create Database for the program.
+You need to launch 1.3.5+ version atleast once to create Database for the program.
 
-After your first launch you need to have SQLite client like datagrip to interact with that database
-
-You need to use this command with values you got first stage (This example only valid for the instruction above)
-```
-INSERT INTO creds (S3_accessKey, S3_secretKey, S3_serviceURL, S3_bucketName, S3_bucketURL, S3_isSpecificKey) VALUES ('Access-Key-ID', 'Secret-key', 'jurisdiction-specific endpoints', 'Bucket-Name', 'https://your.domain/', true);
-```
-Then you need to restart AMDiscordRPC
-
-Note: The reason behind this being so hard i just didnt implemented a popup to ask for these informations
+After the startup you can interact with S3 Credentials Menu by right clicking icon of the application then selecting S3 Credentials option. 
 
 ## License
 This project is licensed under [MIT](https://opensource.org/license/MIT) license.
