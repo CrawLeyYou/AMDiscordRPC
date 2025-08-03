@@ -5,13 +5,13 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using static AMDiscordRPC.AppleMusic;
 using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Discord;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.S3;
+using static AMDiscordRPC.UI;
 
 namespace AMDiscordRPC
 {
@@ -20,22 +20,25 @@ namespace AMDiscordRPC
         private static string oldAlbumnArtist;
         static void Main(string[] args)
         {
+            InitRegion();
+            CreateUI();
             ConfigureLogger();
             InitializeDiscordRPC();
             AttachToAppleMusic();
             AMSongDataEvent.SongChanged += async (sender, x) =>
              {
                  log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
+                 AMDiscordRPCTray.ChangeSongState($"{x.ArtistandAlbumName.Split('—')[0]} - {x.SongName}");
                  if (x.ArtistandAlbumName == oldAlbumnArtist && oldData.Assets.LargeImageKey != null)
                  {
                      SetPresence(x);
                  }
                  else
                  {
-                     if (httpRes == Array.Empty<string>() || CoverThread != null)
+                     if (httpRes.Equals(new WebSongResponse()) || CoverThread != null)
                      {
-                         httpRes = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString(x.ArtistandAlbumName) + $" {ConvertToValidString(x.SongName)}"));
-                         log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
+                         httpRes = await GetCover(x.ArtistandAlbumName.Split('—')[1], Uri.EscapeDataString(x.ArtistandAlbumName + $" {x.SongName}"));
+                         log.Debug($"Set Cover: {((httpRes.artworkURL != null) ? httpRes.artworkURL : null)}");
                      }
                      SetPresence(x, httpRes);
                      oldAlbumnArtist = x.ArtistandAlbumName;
@@ -43,7 +46,7 @@ namespace AMDiscordRPC
              };
             CheckDatabaseIntegrity();
             InitDBCreds();
-            CheckFFMpeg();
+            CheckFFmpeg();
             InitS3();
             AMEvent();
         }
@@ -124,7 +127,7 @@ namespace AMDiscordRPC
                     string previousSong = string.Empty;
                     string previousArtistAlbum = string.Empty;
                     string lastFetchedArtistAlbum = string.Empty;
-                    int audioStatus = 3;
+                    AudioFormat format = AudioFormat.AAC;
                     bool resetStatus = false;
                     double oldValue = 0;
 
@@ -164,6 +167,7 @@ namespace AMDiscordRPC
                                 }
                                 else if (resetStatus == false && slider.AsSlider().Maximum != 0 && oldValue != 0 && currentSong == previousSong && currentArtistAlbum == previousArtistAlbum && startTime != endTime)
                                 {
+                                    AMDiscordRPCTray.ChangeSongState($"{((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())).Split('—')[0]} - {currentSong}");
                                     ChangeTimestamps(startTime, endTime);
                                     oldValue = slider.AsSlider().Value;
                                 }
@@ -180,8 +184,8 @@ namespace AMDiscordRPC
                                     CheckAndInsertAlbum(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1]);
                                     Task t = new Task(async () =>
                                     {
-                                        httpRes = await GetCover(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1], HttpUtility.UrlEncode(ConvertToValidString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())) + $" {ConvertToValidString(currentSong)}"));
-                                        log.Debug($"Set Cover: {((httpRes.Length > 0) ? httpRes[0] : null)}");
+                                        httpRes = await GetCover(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1], Uri.EscapeDataString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()) + $" {currentSong}"));
+                                        log.Debug($"Set Cover: {((httpRes.artworkURL != null) ? httpRes.artworkURL : null)}");
                                     });
                                     CoverThread = t;
                                     t.Start();
@@ -198,31 +202,35 @@ namespace AMDiscordRPC
                                         switch (audioBadge?.Name)
                                         {
                                             case "Dolby Atmos":
-                                                audioStatus = 1;
+                                                format = AudioFormat.Dolby_Atmos;
                                                 break;
                                             case "Dolby Audio":
-                                                audioStatus = 2;
+                                                format = AudioFormat.Dolby_Audio;
                                                 break;
                                             default:
-                                                audioStatus = 0;
+                                                format = AudioFormat.Lossless;
                                                 break;
                                         }
                                     }
-                                    else audioStatus = 3;
+                                    else format = AudioFormat.AAC;
                                     oldValue = 0;
+                                    startTime = currentTime.Subtract(subractThis);
+                                    endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(subractThis);
                                     oldStartTime = startTime;
                                     oldEndTime = endTime;
-                                    AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, audioStatus));
+                                    AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, format));
                                 }
 
                                 if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))
                                 {
                                     localizedPlay = playButton.Name;
+                                    AMDiscordRPCTray.ChangeSongState("AMDiscordRPC");
                                     client.ClearPresence();
                                     resetStatus = true;
                                 }
                                 else if (resetStatus == true && playButton?.Name != null && localizedPlay != null && localizedPlay != playButton?.Name && slider.AsSlider().Maximum != 0)
                                 {
+                                    AMDiscordRPCTray.ChangeSongState($"{((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray())).Split('—')[0]} - {currentSong}");
                                     ChangeTimestamps(startTime, endTime);
                                     resetStatus = false;
                                 }

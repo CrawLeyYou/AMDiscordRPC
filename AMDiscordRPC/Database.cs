@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using static AMDiscordRPC.Globals;
 
 namespace AMDiscordRPC
@@ -11,10 +9,10 @@ namespace AMDiscordRPC
     internal class Database
     {
         private static SQLiteConnection sqlite;
-        private static readonly Dictionary<string, string> sqlMap = new Dictionary<string, string>()
+        public static readonly Dictionary<string, string> sqlMap = new Dictionary<string, string>()
         {
             {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" },
-            {"creds", "S3_accessKey TEXT NOT NULL, S3_secretKey TEXT NOT NULL, S3_serviceURL TEXT NOT NULL, S3_bucketName TEXT NOT NULL, S3_bucketURL TEXT NOT NULL, S3_isSpecificKey BOOLEAN NOT NULL CHECK (S3_isSpecificKey IN (0,1))" },
+            {"creds", "S3_accessKey TEXT, S3_secretKey TEXT, S3_serviceURL TEXT, S3_bucketName TEXT, S3_bucketURL TEXT, S3_isSpecificKey BOOLEAN CHECK (S3_isSpecificKey IN (0,1)), FFmpegPath TEXT" },
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" }
         };
 
@@ -258,7 +256,7 @@ namespace AMDiscordRPC
             public string streamURL { get; set; }
             public string animatedURL { get; set; }
 
-            public SQLCoverResponse(string album, string source, string redirURL, bool? animated, string streamURL, string animatedURL)
+            public SQLCoverResponse(string album = null, string source = null, string redirURL = null, bool? animated = null, string streamURL = null, string animatedURL = null)
             {
                 this.album = album;
                 this.source = source;
@@ -277,6 +275,7 @@ namespace AMDiscordRPC
             {
                 return GetType().GetProperties().Where(s => s.GetValue(this) != null && s.GetValue(this) != this.album).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
             }
+
         }
     }
 }

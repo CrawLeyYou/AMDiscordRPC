@@ -3,16 +3,18 @@ using DiscordRPC;
 using DiscordRPC.Helper;
 using log4net;
 using log4net.Config;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
+using static AMDiscordRPC.Database;
+using static AMDiscordRPC.UI;
 
 namespace AMDiscordRPC
 {
@@ -28,15 +30,53 @@ namespace AMDiscordRPC
         public static readonly Assembly assembly = Assembly.GetExecutingAssembly();
         public static HtmlParser parser = new HtmlParser();
         public static RichPresence oldData = new RichPresence();
-        public static string[] httpRes = Array.Empty<string>();
+        public static WebSongResponse httpRes = new WebSongResponse();
         public static string ffmpegPath;
         public static S3_Creds S3_Credentials;
+        private static List<string> newMatchesArr;
+        public enum S3ConnectionStatus
+        {
+            Connected,
+            Disconnected,
+            Error
+        }
+        public enum AudioFormat
+        {
+            Lossless,
+            Dolby_Atmos,
+            Dolby_Audio,
+            AAC
+        }
+        public static S3ConnectionStatus S3Status = S3ConnectionStatus.Disconnected;
+        public static string AMRegion;
+
 
         public static void ConfigureLogger()
         {
             using (var stream = assembly.GetManifestResourceStream(typeof(AMDiscordRPC), "log4netconf.xml"))
             {
                 XmlConfigurator.Configure(stream);
+            }
+        }
+
+        public static async void InitRegion()
+        {
+            HttpClientHandler HClientHandlerhandler = new HttpClientHandler();
+            CookieContainer cookies = new CookieContainer();
+            HClientHandlerhandler.CookieContainer = cookies;
+            HttpClient httpClient = new HttpClient(HClientHandlerhandler);
+
+            try
+            {
+                _ = httpClient.GetAsync("https://music.apple.com/").Result;
+
+                AMRegion = cookies.GetCookies(new Uri("https://music.apple.com/")).Cast<Cookie>()
+                    .Where(cookie => cookie.Name == "geo").ToList()[0].Value;
+            }
+            catch (Exception e)
+            {
+                log.Error($"Error happened while trying to select region, falling back to US Apple Music. Cause: {e}");
+                AMRegion = "US";
             }
         }
 
@@ -51,6 +91,7 @@ namespace AMDiscordRPC
 
         public static string ConvertToValidString(string data)
         {
+            //We dont need byte validation anymore because of this fix https://github.com/Lachee/discord-rpc-csharp/pull/259. Going to change this method soon.
             if (!data.WithinLength(125, Encoding.UTF8))
             {
                 byte[] byteArr = Encoding.UTF8.GetBytes(data);
@@ -62,7 +103,7 @@ namespace AMDiscordRPC
 
         public static void InitDBCreds()
         {
-            using (SQLiteDataReader dbResp = Database.ExecuteReaderCommand("SELECT * FROM creds LIMIT 1"))
+            using (SQLiteDataReader dbResp = Database.ExecuteReaderCommand($"SELECT {string.Join(", ", Regex.Matches(Database.sqlMap["creds"], @"S3_\w+").FilterRepeatMatches())} FROM creds LIMIT 1"))
             {
                 while (dbResp.Read())
                 {
@@ -77,7 +118,7 @@ namespace AMDiscordRPC
             }
         }
 
-        private static void StartFFMpegProcess(string filename)
+        private static void StartFFmpegProcess(string filename)
         {
             try
             {
@@ -104,16 +145,22 @@ namespace AMDiscordRPC
             }
             catch (Exception ex)
             {
-                log.Error($"FFMpeg Check error: {ex}");
+                log.Error($"FFmpeg Check error: {ex}");
             }
         }
 
-        public static async void CheckFFMpeg()
+        public static async void CheckFFmpeg()
         {
             List<string> paths = Environment.GetEnvironmentVariable("PATH").Split(';').Where(v => v.Contains("ffmpeg")).Select(s => $@"{s}\ffmpeg.exe").Prepend("ffmpeg").ToList();
-            foreach (var item in paths)
+            object SQLQueryRes = ExecuteScalarCommand($"SELECT FFmpegPath from creds");
+
+            if (SQLQueryRes != null)
             {
-                StartFFMpegProcess(item);
+                paths.Add(SQLQueryRes.ToString() + "\\ffmpeg.exe");
+            }
+            foreach (string item in paths)
+            {
+                StartFFmpegProcess(item);
                 if (ffmpegPath != null)
                 {
                     break;
@@ -123,7 +170,7 @@ namespace AMDiscordRPC
             {
                 log.Info($"Found ffmpeg");
             }
-            else log.Warn("FFmpeg not found");
+            else FFmpegDialog();
         }
 
         public class SongData : EventArgs
@@ -133,17 +180,22 @@ namespace AMDiscordRPC
             public bool IsMV { get; set; }
             public DateTime StartTime { get; set; }
             public DateTime EndTime { get; set; }
-            public int AudioDetail { get; set; }
+            public AudioFormat format { get; set; }
 
-            public SongData(string SongName, string ArtistandAlbumName, bool IsMV, DateTime StartTime, DateTime EndTime, int AudioDetail)
+            public SongData(string SongName, string ArtistandAlbumName, bool IsMV, DateTime StartTime, DateTime EndTime, AudioFormat format)
             {
                 this.SongName = SongName;
                 this.ArtistandAlbumName = ArtistandAlbumName;
                 this.IsMV = IsMV;
                 this.StartTime = StartTime;
                 this.EndTime = EndTime;
-                this.AudioDetail = AudioDetail;
+                this.format = format;
             }
+        }
+
+        public static List<string> FilterRepeatMatches(this MatchCollection matches)
+        {
+            return matches.Cast<Match>().Select(m => m.Value).Distinct().ToList();
         }
 
         public class S3_Creds
@@ -168,6 +220,38 @@ namespace AMDiscordRPC
             public List<string> GetNullKeys()
             {
                 return GetType().GetProperties().Where(s => s.GetValue(this) == null).Select(p => p.Name).ToList();
+            }
+
+            public List<string> GetNotNullKeys()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) != null).Select(p => $"S3_{p.Name}").ToList();
+            }
+
+            public List<object> GetNotNullValues()
+            {
+                return GetType().GetProperties().Where(s => s.GetValue(this) != null).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
+            }
+        }
+
+        public class WebSongResponse
+        {
+            public string artworkURL { get; set; }
+            public string trackURL { get; set; }
+            public string trackName { get; set; }
+
+            public WebSongResponse(string artworkURL = null, string trackURL = null, string trackName = null)
+            {
+                this.artworkURL = artworkURL;
+                this.trackURL = trackURL;
+                this.trackName = trackName;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is WebSongResponse other &&
+                       artworkURL == other.artworkURL &&
+                       trackURL == other.trackURL &&
+                       trackName == other.trackName;
             }
         }
     }

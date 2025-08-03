@@ -1,11 +1,8 @@
 ﻿using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
+using AMDiscordRPC.UIComponents;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using static AMDiscordRPC.Globals;
 
@@ -17,15 +14,31 @@ namespace AMDiscordRPC
 
         public static void InitS3()
         {
-            if (S3_Credentials != null && S3_Credentials.GetNullKeys().Count == 0)
+            try
             {
-                BasicAWSCredentials credentials = new BasicAWSCredentials(S3_Credentials.accessKey, S3_Credentials.secretKey);
-                s3Client = new AmazonS3Client(credentials, new AmazonS3Config
+                if (S3_Credentials != null && S3_Credentials.GetNullKeys().Count == 0)
                 {
-                    ServiceURL = S3_Credentials.serviceURL,
-                    RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
-                    ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
-                });
+                    BasicAWSCredentials credentials = new BasicAWSCredentials(S3_Credentials.accessKey, S3_Credentials.secretKey);
+                    s3Client = new AmazonS3Client(credentials, new AmazonS3Config
+                    {
+                        ServiceURL = S3_Credentials.serviceURL,
+                        RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+                        ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
+                    });
+                    S3Status = S3ConnectionStatus.Connected;
+                    InputWindow.ChangeS3Status(S3ConnectionStatus.Connected);
+                }
+                else
+                {
+                    S3Status = S3ConnectionStatus.Disconnected;
+                    InputWindow.ChangeS3Status(S3ConnectionStatus.Disconnected);
+                }
+            }
+            catch (Exception e)
+            {
+                S3Status = S3ConnectionStatus.Error;
+                InputWindow.ChangeS3Status(S3ConnectionStatus.Error);
+                log.Error(e);
             }
         }
 

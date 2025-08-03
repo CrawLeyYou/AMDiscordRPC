@@ -1,6 +1,4 @@
-﻿using AngleSharp.Text;
-using FlaUI.Core.Tools;
-using M3U8Parser;
+﻿using M3U8Parser;
 using M3U8Parser.Tags.MultivariantPlaylist;
 using System;
 using System.Collections.Generic;
@@ -9,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -24,7 +21,7 @@ namespace AMDiscordRPC
         public static async Task ConvertM3U8(string album, string playlistUrl, CancellationToken ct)
         {
             // ^I thought storing Master Playlist would be better for in case of bucket changes and Apple's codec changes on lowest quality.
-            Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, true, playlistUrl, null));
+            Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, true, playlistUrl));
             StreamInf playlist = await FetchResolution(playlistUrl);
             if (!ct.IsCancellationRequested && playlist != null)
             {
@@ -48,10 +45,9 @@ namespace AMDiscordRPC
                     else throw new Exception("FFmpeg not found");
                     log.Debug($"Converted to GIF. Path: {gifPath}");
                     if (ct.IsCancellationRequested) throw new Exception("Cancelled");
-                    if (S3_Credentials != null && S3_Credentials.GetNullKeys().Count == 0) servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
+                    if (S3Status == S3ConnectionStatus.Connected) servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
                     else throw new Exception("S3 is not properly configured.");
                     log.Debug("Put S3 Bucket");
-                    if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                     Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, null, null, servedPath));
                     if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                     SetCover(servedPath);
