@@ -1,5 +1,9 @@
+<p align="center">
+  <img width="256" height="256" alt="Logo Black" src="https://github.com/user-attachments/assets/2a65581c-c821-4eab-859b-7d111cd3e39f" />
+</p>
 <h1 align="center"> AMDiscordRPC </h1>
 <p align="center"><i>An another Apple Music Discord RPC</i></p>
+
 
 ## Usage
 [Download](https://github.com/CrawLeyYou/AMDiscordRPC/releases/latest) latest release and make sure you have [.NET Framework 4.7.2](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net472).
