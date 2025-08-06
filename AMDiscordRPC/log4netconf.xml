@@ -7,7 +7,7 @@
 
 	<appender name="RollingFile" type="log4net.Appender.RollingFileAppender">
 		<filter type="log4net.Filter.LevelRangeFilter">
-			<levelMin value="DEBUG" />
+			<levelMin value="INFO" />
 			<levelMax value="FATAL" />
 		</filter>
 
