@@ -20,11 +20,11 @@ namespace AMDiscordRPC
         private static string oldAlbumnArtist;
         static void Main(string[] args)
         {
+            ConfigureLogger();
             InitRegion();
             CreateUI();
-            ConfigureLogger();
-            InitializeDiscordRPC();
-            AttachToAppleMusic();
+            InitDiscordRPC();
+            AttachToAM();
             AMSongDataEvent.SongChanged += async (sender, x) =>
              {
                  log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
@@ -249,7 +249,7 @@ namespace AMDiscordRPC
                             client.ClearPresence();
                             while (!AMAttached)
                             {
-                                AttachToAppleMusic();
+                                AttachToAM();
                                 Thread.Sleep(1000);
                             }
                             AMEvent();
@@ -262,7 +262,7 @@ namespace AMDiscordRPC
                         client.ClearPresence();
                         while (!AMAttached)
                         {
-                            AttachToAppleMusic();
+                            AttachToAM();
                             Thread.Sleep(1000);
                         }
                         AMEvent();
@@ -272,7 +272,7 @@ namespace AMDiscordRPC
                 {
                     while (!AMAttached)
                     {
-                        AttachToAppleMusic();
+                        AttachToAM();
                         Thread.Sleep(1000);
                     }
                     AMEvent();

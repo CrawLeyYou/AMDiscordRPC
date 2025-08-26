@@ -60,6 +60,7 @@ namespace AMDiscordRPC
 
         public static async Task<WebSongResponse> AsyncAMFetch(string album, string searchStr)
         {
+            log.Debug($"https://music.apple.com/{AMRegion.ToLower()}/search?term={searchStr}");
             try
             {
                 HttpResponseMessage AMRequest = await hclient.GetAsync($"https://music.apple.com/{AMRegion.ToLower()}/search?term={searchStr}");
@@ -93,6 +94,7 @@ namespace AMDiscordRPC
             try
             {
                 var appleMusicDom = await hclient.GetAsync(url);
+                log.Debug($"Animated Cover Request: {url}");
                 if (appleMusicDom.IsSuccessStatusCode)
                 {
                     string DOMasAString = await appleMusicDom.Content.ReadAsStringAsync();

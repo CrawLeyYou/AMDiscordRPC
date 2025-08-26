@@ -13,10 +13,11 @@ namespace AMDiscordRPC
         private static Thread thread = null;
         public static CancellationTokenSource animatedCoverCts;
 
-        public static void InitializeDiscordRPC()
+        public static void InitDiscordRPC()
         {
             client = new DiscordRpcClient("1308911584164319282");
             client.Initialize();
+            log.Debug("Discord RPC initialized.");
         }
 
         public static void ChangeTimestamps(DateTime start = new DateTime(), DateTime end = new DateTime())

@@ -2,7 +2,12 @@
 using DiscordRPC;
 using DiscordRPC.Helper;
 using log4net;
+using log4net.Appender;
 using log4net.Config;
+using log4net.Core;
+using log4net.Filter;
+using log4net.Layout;
+using log4net.Repository.Hierarchy;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
@@ -34,22 +39,9 @@ namespace AMDiscordRPC
         public static string ffmpegPath;
         public static S3_Creds S3_Credentials;
         private static List<string> newMatchesArr;
-        public enum S3ConnectionStatus
-        {
-            Connected,
-            Disconnected,
-            Error
-        }
-        public enum AudioFormat
-        {
-            Lossless,
-            Dolby_Atmos,
-            Dolby_Audio,
-            AAC
-        }
         public static S3ConnectionStatus S3Status = S3ConnectionStatus.Disconnected;
         public static string AMRegion;
-
+        public static SmallImage SelectedSmallImage = SmallImage.LossDolby;
 
         public static void ConfigureLogger()
         {
@@ -57,9 +49,36 @@ namespace AMDiscordRPC
             {
                 XmlConfigurator.Configure(stream);
             }
+
+            LevelRangeFilter lrf = new LevelRangeFilter
+            {
+                LevelMax = Level.Fatal,
+                LevelMin = Level.Info
+            };
+            #if DEBUG
+                lrf.LevelMin = Level.Debug;
+            #endif
+            lrf.ActivateOptions();
+
+            PatternLayout pl = new PatternLayout
+            {
+                ConversionPattern = "[%date{HH:mm:ss.fff}] %level (%method:%line) - %message%newline"
+            };
+            pl.ActivateOptions();
+
+            RollingFileAppender rfa = new RollingFileAppender
+            {
+                AppendToFile = false,
+                File = @"logs/latest.log",
+                Layout = pl,
+            };
+            rfa.AddFilter(lrf);
+            rfa.ActivateOptions();
+
+            ((Hierarchy)LogManager.GetRepository()).Root.AddAppender(rfa);
         }
 
-        public static async void InitRegion()
+        public static void InitRegion()
         {
             HttpClientHandler HClientHandlerhandler = new HttpClientHandler();
             CookieContainer cookies = new CookieContainer();
@@ -72,6 +91,7 @@ namespace AMDiscordRPC
 
                 AMRegion = cookies.GetCookies(new Uri("https://music.apple.com/")).Cast<Cookie>()
                     .Where(cookie => cookie.Name == "geo").ToList()[0].Value;
+                log.Info($"Region selected as: {AMRegion.ToLower()}");
             }
             catch (Exception e)
             {
@@ -171,6 +191,27 @@ namespace AMDiscordRPC
                 log.Info($"Found ffmpeg");
             }
             else FFmpegDialog();
+        }
+
+        public enum S3ConnectionStatus
+        {
+            Connected,
+            Disconnected,
+            Error
+        }
+        public enum AudioFormat
+        {
+            Lossless,
+            Dolby_Atmos,
+            Dolby_Audio,
+            AAC
+        }
+
+        public enum SmallImage
+        {
+            LossDolby,
+            Artist,
+            None
         }
 
         public class SongData : EventArgs

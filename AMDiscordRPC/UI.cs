@@ -16,6 +16,7 @@ namespace AMDiscordRPC
     internal class UI
     {
         private static InputWindow inputWindow;
+        private static OptionsWindow optionsWindow;
         private static Application app;
         private static Thread mainThread = Thread.CurrentThread;
 
@@ -31,6 +32,7 @@ namespace AMDiscordRPC
 
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
+            log.Debug("Tray thread started.");
         }
 
         public static void FFmpegDialog()
@@ -73,6 +75,7 @@ namespace AMDiscordRPC
             private static ContextMenu contextMenu = new ContextMenu();
             public static MenuItem notifySongState = new MenuItem();
             public MenuItem s3Menu = new MenuItem();
+            public MenuItem optionsMenu = new MenuItem();
 
             public AMDiscordRPCTray()
             {
@@ -91,11 +94,23 @@ namespace AMDiscordRPC
                     });
                 });
 
+                optionsMenu.Text = "Options";
+                optionsMenu.Index = 2;
+                optionsMenu.Click += new EventHandler((object sender, EventArgs e) =>
+                {
+                    app.Dispatcher.Invoke(() =>
+                    {
+                        optionsWindow = new OptionsWindow();
+                        optionsWindow.Show();
+                    });
+                });
+
                 contextMenu.MenuItems.AddRange(
                      new MenuItem[]
                      {
                          notifySongState,
                          s3Menu,
+                         optionsMenu,
                          new MenuItem("Show Latest Log", (s,e)  => { Process.Start("notepad", $"{Path.Combine(Directory.GetCurrentDirectory(), @"logs\latest.log")}"); }),
                          new MenuItem("Exit", (s, e) => { Environment.Exit(0); })
                      }
