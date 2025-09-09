@@ -11,9 +11,10 @@ namespace AMDiscordRPC
         private static SQLiteConnection sqlite;
         public static readonly Dictionary<string, string> sqlMap = new Dictionary<string, string>()
         {
-            {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" },
+            {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistSource TEXT, animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" },
             {"creds", "S3_accessKey TEXT, S3_secretKey TEXT, S3_serviceURL TEXT, S3_bucketName TEXT, S3_bucketURL TEXT, S3_isSpecificKey BOOLEAN CHECK (S3_isSpecificKey IN (0,1)), FFmpegPath TEXT" },
-            {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" }
+            {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" },
+            {"clientSettings", "smallImage INTEGER"}
         };
 
         private static void InitDatabase()
@@ -57,6 +58,7 @@ namespace AMDiscordRPC
             }
         }
 
+        // Note: source, streamurl, animated, animatedUrl can be stored in external table so we decrease the file size of database
         private static void CheckForeignKeys()
         {
             ExecuteNonQueryCommand("PRAGMA foreign_keys = on");
@@ -119,7 +121,9 @@ namespace AMDiscordRPC
                         reader.GetString(2),
                         ((!reader.IsDBNull(3)) ? reader.GetBoolean(3) : null),
                         ((!reader.IsDBNull(4)) ? reader.GetString(4) : null),
-                        ((!reader.IsDBNull(5)) ? reader.GetString(5) : null));
+                        ((!reader.IsDBNull(5)) ? reader.GetString(5) : null),
+                        reader.GetString(6)
+                        );
                 }
             }
             return null;
@@ -155,7 +159,7 @@ namespace AMDiscordRPC
                             // Recovery functionality will be added next release.
                         }
                     }
-                    else if (column == null)
+                    else if (column == null && !item.Value.primaryKey)
                     {
                         ExecuteNonQueryCommand($"ALTER TABLE {table} ADD COLUMN {SQLInfo}");
                     }
@@ -255,8 +259,10 @@ namespace AMDiscordRPC
             public bool? animated { get; set; }
             public string streamURL { get; set; }
             public string animatedURL { get; set; }
+            public string artistRedirURL { get; set; }
 
-            public SQLCoverResponse(string album = null, string source = null, string redirURL = null, bool? animated = null, string streamURL = null, string animatedURL = null)
+
+            public SQLCoverResponse(string album = null, string source = null, string redirURL = null, bool? animated = null, string streamURL = null, string animatedURL = null, string artistRedirURL = null)
             {
                 this.album = album;
                 this.source = source;
@@ -264,6 +270,7 @@ namespace AMDiscordRPC
                 this.animated = animated;
                 this.streamURL = streamURL;
                 this.animatedURL = animatedURL;
+                this.artistRedirURL = artistRedirURL;
             }
 
             public List<string> GetNotNullKeys()

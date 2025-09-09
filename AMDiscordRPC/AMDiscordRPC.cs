@@ -45,7 +45,7 @@ namespace AMDiscordRPC
                  }
              };
             CheckDatabaseIntegrity();
-            InitDBCreds();
+            ConfigureFromDB();
             CheckFFmpeg();
             InitS3();
             AMEvent();
@@ -144,7 +144,7 @@ namespace AMDiscordRPC
                                 if (oldValue == 0) oldValue = slider.AsSlider().Value;
                                 DateTime currentTime = DateTime.UtcNow;
                                 DateTime startTime = currentTime.Subtract(subractThis);
-                                DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(subractThis);
+                                DateTime endTime = startTime.AddSeconds(slider.AsSlider().Maximum);
                                 DateTime oldEndTime = DateTime.MinValue;
                                 DateTime oldStartTime = DateTime.MinValue;
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
@@ -214,8 +214,6 @@ namespace AMDiscordRPC
                                     }
                                     else format = AudioFormat.AAC;
                                     oldValue = 0;
-                                    startTime = currentTime.Subtract(subractThis);
-                                    endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(subractThis);
                                     oldStartTime = startTime;
                                     oldEndTime = endTime;
                                     AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, format));
@@ -256,7 +254,7 @@ namespace AMDiscordRPC
                         }
                         Thread.Sleep(20);
                     }
-                    if (!AMAttached & AppleMusicProc.HasExited != true)
+                    if (!AMAttached && AppleMusicProc.HasExited != true)
                     {
                         log.Info("Something happened which needs to reattach");
                         client.ClearPresence();

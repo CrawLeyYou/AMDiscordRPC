@@ -80,6 +80,7 @@ namespace AMDiscordRPC
             {
                 Type = ActivityType.Listening,
                 Details = ConvertToValidString(x.SongName),
+                StateUrl = resp.artistURL,
                 StatusDisplay = StatusDisplayType.State,
                 State = (x.IsMV) ? x.ArtistandAlbumName : ConvertToValidString(x.ArtistandAlbumName.Split('—')[0]),
                 Assets = new Assets()
@@ -99,6 +100,8 @@ namespace AMDiscordRPC
                     End = x.EndTime,
                 }
             };
+            if (oldData.Assets.LargeImageText.Length == 1)
+                oldData.Assets.LargeImageText = $"{oldData.Assets.LargeImageText}‍"; // THIS HAS U+200D AT THE END OF STRING TO FIX '"large_text" length must be at least 2 characters long' ERROR
             client.SetPresence(oldData);
             if (resp.artworkURL != null && !resp.artworkURL.Contains((S3_Credentials != null) ? (S3_Credentials.GetNullKeys().Count == 0) ? S3_Credentials.bucketURL : "" : ""))
             {

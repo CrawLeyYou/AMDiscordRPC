@@ -121,9 +121,9 @@ namespace AMDiscordRPC
             return data;
         }
 
-        public static void InitDBCreds()
+        public static void ConfigureFromDB()
         {
-            using (SQLiteDataReader dbResp = Database.ExecuteReaderCommand($"SELECT {string.Join(", ", Regex.Matches(Database.sqlMap["creds"], @"S3_\w+").FilterRepeatMatches())} FROM creds LIMIT 1"))
+            using (SQLiteDataReader dbResp = ExecuteReaderCommand($"SELECT {string.Join(", ", Regex.Matches(sqlMap["creds"], @"S3_\w+").FilterRepeatMatches())} FROM creds LIMIT 1"))
             {
                 while (dbResp.Read())
                 {
@@ -136,6 +136,8 @@ namespace AMDiscordRPC
                         ((!dbResp.IsDBNull(5)) ? dbResp.GetBoolean(5) : null));
                 }
             }
+
+            SelectedSmallImage = (SmallImage)Convert.ToInt32(ExecuteScalarCommand("SELECT smallImage FROM clientSettings"));
         }
 
         private static void StartFFmpegProcess(string filename)
@@ -279,12 +281,14 @@ namespace AMDiscordRPC
             public string artworkURL { get; set; }
             public string trackURL { get; set; }
             public string trackName { get; set; }
+            public string artistURL { get; set; }
 
-            public WebSongResponse(string artworkURL = null, string trackURL = null, string trackName = null)
+            public WebSongResponse(string artworkURL = null, string trackURL = null, string trackName = null, string artistURL = null)
             {
                 this.artworkURL = artworkURL;
                 this.trackURL = trackURL;
                 this.trackName = trackName;
+                this.artistURL = artistURL;
             }
 
             public override bool Equals(object obj)
@@ -292,7 +296,8 @@ namespace AMDiscordRPC
                 return obj is WebSongResponse other &&
                        artworkURL == other.artworkURL &&
                        trackURL == other.trackURL &&
-                       trackName == other.trackName;
+                       trackName == other.trackName && 
+                       artistURL == other.artistURL;
             }
         }
     }

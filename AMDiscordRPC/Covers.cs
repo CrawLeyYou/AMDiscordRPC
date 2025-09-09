@@ -4,6 +4,7 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using AngleSharp.Dom;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Playlist;
@@ -30,9 +31,10 @@ namespace AMDiscordRPC
                         (
                             imageRes["results"][0]["artworkUrl100"].ToString(),
                             imageRes["results"][0]["trackViewUrl"].ToString(),
-                            imageRes["results"][0]["collectionName"].ToString()
+                            imageRes["results"][0]["collectionName"].ToString(),
+                            imageRes["results"][0]["artistViewUrl"].ToString()
                         );
-                        Database.UpdateAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL));
+                        UpdateAlbum(new SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL, null, null, null, webRes.artistURL));
                         CoverThread = null;
                         return webRes;
                     }
@@ -58,6 +60,11 @@ namespace AMDiscordRPC
             }
         }
 
+        public static async Task<string> AsyncArtistProfileFetch(string url)
+        {
+            return null;
+        }
+
         public static async Task<WebSongResponse> AsyncAMFetch(string album, string searchStr)
         {
             log.Debug($"https://music.apple.com/{AMRegion.ToLower()}/search?term={searchStr}");
@@ -68,12 +75,15 @@ namespace AMDiscordRPC
                 {
                     string DOMasAString = await AMRequest.Content.ReadAsStringAsync();
                     IHtmlDocument document = parser.ParseDocument(DOMasAString);
+
                     WebSongResponse webRes = new WebSongResponse(
-                        document.DocumentElement.QuerySelectorAll("div.top-search-lockup__artwork > div > picture > source")[1].GetAttribute("srcset").Split(' ')[0],
-                        document.DocumentElement.QuerySelector("div.top-search-lockup__action > a").GetAttribute("href")
+                        document.DocumentElement.QuerySelectorAll("div.track-lockup__artwork-wrapper > div > picture > source")[1].GetAttribute("srcset").Split(',')[1].Split(' ')[0],
+                        document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > a")[0].GetAttribute("href"),
+                        null,
+                        document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > span > a")[0].GetAttribute("href")
                     );
                     CoverThread = null;
-                    Database.UpdateAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL));
+                    UpdateAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL, null, null, null, webRes.artistURL));
                     return webRes;
                 }
                 else
