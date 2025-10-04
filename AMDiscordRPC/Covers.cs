@@ -1,10 +1,10 @@
-﻿using AngleSharp.Html.Dom;
+﻿using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using AngleSharp.Dom;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Playlist;
@@ -129,7 +129,7 @@ namespace AMDiscordRPC
         {
             try
             {
-                log.Debug($"https://music.apple.com/us/search?term={searchStr}");
+                log.Debug($"https://music.apple.com/{AMRegion.ToLower()}/search?term={searchStr}");
                 SQLCoverResponse cover = GetAlbumDataFromSQL(album);
                 if (cover != null)
                 {

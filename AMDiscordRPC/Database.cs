@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Amazon.Runtime.Internal.Transform;
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
@@ -11,7 +12,11 @@ namespace AMDiscordRPC
         private static SQLiteConnection sqlite;
         public static readonly Dictionary<string, string> sqlMap = new Dictionary<string, string>()
         {
-            {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistSource TEXT, animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" },
+            //{"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistSource TEXT, animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" },
+            {"coverTableNew", "coverID INTEGER PRIMARY KEY AUTOINCREMENT, staticCoverURL TEXT NOT NULL, isAnimated BOOLEAN CHECK (isAnimated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT"},
+            {"artistTable", "artistID INTEGER PRIMARY KEY AUTOINCREMENT, artistName TEXT NOT NULL, artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistProfileSource TEXT"},
+            {"albumTable", "albumID INTEGER PRIMARY KEY AUTOINCREMENT, albumName TEXT NOT NULL, albumURL TEXT UNIQUE, isSingle BOOLEAN CHECK (isSingle IN (0,1)), coverID INTEGER, artistID INTEGER, FOREIGN KEY (coverID) REFERENCES coverTableNew(coverID), FOREIGN KEY (artistID) REFERENCES artistTable(artistID)"},
+            {"songTable", "songTitle TEXT, songURL TEXT, albumID INTEGER, artistID INTEGER, FOREIGN KEY (albumID) REFERENCES albumTable(albumID), FOREIGN KEY (artistID) REFERENCES artistTable(artistID)"},
             {"creds", "S3_accessKey TEXT, S3_secretKey TEXT, S3_serviceURL TEXT, S3_bucketName TEXT, S3_bucketURL TEXT, S3_isSpecificKey BOOLEAN CHECK (S3_isSpecificKey IN (0,1)), FFmpegPath TEXT" },
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" },
             {"clientSettings", "smallImage INTEGER"}
@@ -39,7 +44,7 @@ namespace AMDiscordRPC
             {
                 try
                 {
-                    //CheckForeignKeys(); we don't have use case for relationships rn so no need to waste resources on this check
+                    CheckForeignKeys();
                     CheckTables();
                     CheckColumns();
                 }
@@ -133,12 +138,21 @@ namespace AMDiscordRPC
         {
             foreach (var table in sqlMap.Keys)
             {
-                SQLiteDataReader data = ExecuteReaderCommand($"PRAGMA table_info({table})");
+                SQLiteDataReader data = ExecuteReaderCommand($"SELECT * FROM sqlite_master");
                 Dictionary<string, ColumnInfo> tableData = new Dictionary<string, ColumnInfo>();
 
                 while (data.Read())
                 {
-                    tableData.Add(data.GetString(1), new ColumnInfo(data.GetString(2), data.GetBoolean(3), (!data.IsDBNull(4)) ? data.GetString(4) : null, data.GetBoolean(5)));
+                    if (data.GetString(0) == "table" && data.GetString(2) == table)
+                    { 
+                        string sqlStr = string.Join("(", data.GetString(4).Split(new[] { "CREATE TABLE " }, StringSplitOptions.None)[1].Split('(').Skip(1)).TrimEnd(1);
+                        var temp = ConvertSQLStringToColumnInfo(sqlStr);
+                        foreach (var keyValuePair in temp)
+                        {
+                            //log.Debug($"{keyValuePair.Key}, autoIncrement: {keyValuePair.Value.isAutoIncrementing}, defaultValue: {keyValuePair.Value.defaultValue}, foreignKey: [Key: {keyValuePair.Value.foreignKey?.key}, refColumn: {keyValuePair.Value.foreignKey?.refColumn}, refTable: {keyValuePair.Value.foreignKey?.refTable}], nullCheck: {keyValuePair.Value.nullCheck}, primaryKey: {keyValuePair.Value.primaryKey}, type: {keyValuePair.Value.type}");
+                            tableData.Add(keyValuePair.Key, keyValuePair.Value);
+                        }
+                    }
                 }
 
                 foreach (var item in ConvertSQLStringToColumnInfo(sqlMap[table]))
@@ -148,7 +162,7 @@ namespace AMDiscordRPC
                     if (!item.Value.Equals(column) && column != null)
                     {
                         log.Debug($"Corrupted/Outdated column:{SQLInfo.Split(' ')[0]} found.");
-                        if (!item.Value.primaryKey && ((item.Value.nullCheck && item.Value.defaultValue != null) || !item.Value.nullCheck))
+                        if (!item.Value.primaryKey && ((item.Value.nullCheck && item.Value.defaultValue != null) || !item.Value.nullCheck) && item.Value.foreignKey == null)
                         {
                             ExecuteNonQueryCommand($"ALTER TABLE {table} DROP COLUMN {SQLInfo.Split(' ')[0]}");
                             ExecuteNonQueryCommand($"ALTER TABLE {table} ADD COLUMN {SQLInfo}");
@@ -174,11 +188,14 @@ namespace AMDiscordRPC
             foreach (var column in columns)
             {
                 string[] splitStr = column.Split(' ');
+                if (splitStr[0] == "FOREIGN") continue;
                 columnsMap.Add(splitStr[0], new ColumnInfo(
                     splitStr[1],
                     column.Contains("NOT NULL"),
                     (column.Contains("DEFAULT")) ? column.Split(new[] { "DEFAULT " }, StringSplitOptions.None)[1] : null, //This is not a proper way to do this but it works for now (DEFAULT value must be on the last section of the SQL Command)
-                    column.Contains("PRIMARY KEY")
+                    column.Contains("PRIMARY KEY"),
+                    column.Contains("AUTOINCREMENT"),
+                    (sqlStr.Contains($"FOREIGN KEY ({splitStr[0]})")) ? new ForeignKey(splitStr[0], columns.Where(a => a.Contains($"FOREIGN KEY ({splitStr[0]})")).First().Split(new[] { "REFERENCES " }, StringSplitOptions.None)[1].Split('(')[0], columns.Where(a => a.Contains($"FOREIGN KEY ({splitStr[0]})")).First().Split(new[] { "REFERENCES " }, StringSplitOptions.None)[1].Split('(')[1].Split(')')[0]) : null
                 ));
             }
             return columnsMap;
@@ -232,13 +249,17 @@ namespace AMDiscordRPC
             public bool nullCheck { get; set; }
             public string defaultValue { get; set; }
             public bool primaryKey { get; set; }
+            public bool isAutoIncrementing { get; set; }
+            public ForeignKey foreignKey { get; set; }
 
-            public ColumnInfo(string type, bool nullCheck, string defaultValue, bool primaryKey)
+            public ColumnInfo(string type, bool nullCheck, string defaultValue, bool primaryKey, bool isAutoIncrementing, ForeignKey foreignKey = null)
             {
                 this.type = type;
                 this.nullCheck = nullCheck;
                 this.defaultValue = defaultValue;
                 this.primaryKey = primaryKey;
+                this.isAutoIncrementing = isAutoIncrementing;
+                this.foreignKey = foreignKey;
             }
 
             public override bool Equals(object obj)
@@ -247,7 +268,23 @@ namespace AMDiscordRPC
                        type == other.type &&
                        nullCheck == other.nullCheck &&
                        defaultValue == other.defaultValue &&
-                       primaryKey == other.primaryKey;
+                       primaryKey == other.primaryKey &&
+                       isAutoIncrementing == other.isAutoIncrementing &&
+                       foreignKey == other.foreignKey;
+            }
+        }
+
+        public class ForeignKey
+        {
+            public string key { get; set; }
+            public string refTable { get; set; }
+            public string refColumn { get; set; }
+
+            public ForeignKey(string key, string refTable, string refColumn)
+            {
+                this.key = key;
+                this.refTable = refTable;
+                this.refColumn = refColumn;
             }
         }
 

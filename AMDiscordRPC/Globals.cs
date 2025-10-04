@@ -55,9 +55,9 @@ namespace AMDiscordRPC
                 LevelMax = Level.Fatal,
                 LevelMin = Level.Info
             };
-            #if DEBUG
-                lrf.LevelMin = Level.Debug;
-            #endif
+#if DEBUG
+            lrf.LevelMin = Level.Debug;
+#endif
             lrf.ActivateOptions();
 
             PatternLayout pl = new PatternLayout
@@ -296,9 +296,13 @@ namespace AMDiscordRPC
                 return obj is WebSongResponse other &&
                        artworkURL == other.artworkURL &&
                        trackURL == other.trackURL &&
-                       trackName == other.trackName && 
+                       trackName == other.trackName &&
                        artistURL == other.artistURL;
             }
+        }
+        public static String TrimEnd(this String str, int count)
+        {
+            return str.Substring(0, str.Length - count);
         }
     }
 }
