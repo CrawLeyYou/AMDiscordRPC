@@ -88,7 +88,7 @@ namespace AMDiscordRPC
                         {
                             for (var i = 0; i < windows.Length; i++)
                             {
-                                if (windows[i].Name == "Apple Music") window = windows[i];
+                                if (windows[i].Name == "Apple Music" && windows[i].FindFirstChild().Name == "Non Client Input Sink Window") window = windows[i];
                             }
                         }
                         else if (windows.Length == 1)

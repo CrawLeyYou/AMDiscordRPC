@@ -1,8 +1,9 @@
 ﻿using AMDiscordRPC.UIComponents;
+using FlaUI.UIA3;
 using System;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
@@ -10,6 +11,7 @@ using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Globals;
 using Application = System.Windows.Application;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using Window = FlaUI.Core.AutomationElements.Window;
 
 namespace AMDiscordRPC
 {
@@ -19,6 +21,15 @@ namespace AMDiscordRPC
         private static OptionsWindow optionsWindow;
         private static Application app;
         private static Thread mainThread = Thread.CurrentThread;
+
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, int hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll")]
+        private static extern long GetWindowLongPtrA(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern long SetWindowLongPtrA(IntPtr hWnd, int nIndex, long dwNewLong);
 
         public static void CreateUI()
         {
@@ -69,6 +80,36 @@ namespace AMDiscordRPC
             thread.Start();
         }
 
+        public static void FullScreenTweak()
+        {
+            using (var automation = new UIA3Automation())
+            {
+                Window lyricScreenWindow = null;
+                foreach (var window in AppleMusicProc.GetAllTopLevelWindows(automation))
+                {
+                    if (window.FindFirstChild().Name != "Non Client Input Sink Window" && window.Name == "Apple Music") lyricScreenWindow = window;
+                }
+
+                if (lyricScreenWindow != null)
+                {
+                    IntPtr lyricsScreenHandler = (IntPtr)lyricScreenWindow.Properties.NativeWindowHandle;
+                    Screen lyricsScreenHandlerCurrentMonitor = Screen.FromHandle(lyricsScreenHandler);
+                    long style = GetWindowLongPtrA(lyricsScreenHandler, (int) GWLP.STYLE);
+                    style &= ~((long) WS.CAPTION | (long) WS.THICKFRAME);
+                    SetWindowLongPtrA(lyricsScreenHandler, (int) GWLP.STYLE, style);
+
+                    long exStyle = GetWindowLongPtrA(lyricsScreenHandler, (int) GWLP.EXSTYLE);
+                    exStyle &= ~((long) WS_EX.DLGMODALFRAME | (long) WS_EX.CLIENTEDGE | (long) WS_EX.STATICEDGE);
+                    SetWindowLongPtrA(lyricsScreenHandler, (int) GWLP.EXSTYLE, exStyle);
+
+                    SetWindowPos(lyricsScreenHandler, (int) HWND.TOPMOST, lyricsScreenHandlerCurrentMonitor.Bounds.Left,
+                        lyricsScreenHandlerCurrentMonitor.Bounds.Top, lyricsScreenHandlerCurrentMonitor.Bounds.Width,
+                        lyricsScreenHandlerCurrentMonitor.Bounds.Height,
+                        (uint) SWP.NOOWNERZORDER | (uint) SWP.FRAMECHANGED | (uint) SWP.SHOWWINDOW);
+                }
+            }
+        }
+
         public class AMDiscordRPCTray
         {
             private static NotifyIcon notifyIcon = new NotifyIcon();
@@ -111,6 +152,7 @@ namespace AMDiscordRPC
                          notifySongState,
                          s3Menu,
                          optionsMenu,
+                         new MenuItem("Fix Fullscreen", (s,e) => FullScreenTweak()),
                          new MenuItem("Show Latest Log", (s,e)  => { Process.Start("notepad", $"{Path.Combine(Directory.GetCurrentDirectory(), @"logs\latest.log")}"); }),
                          new MenuItem("Exit", (s, e) => { Environment.Exit(0); })
                      }

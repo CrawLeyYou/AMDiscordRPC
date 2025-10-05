@@ -216,6 +216,105 @@ namespace AMDiscordRPC
             None
         }
 
+        public enum GWLP {
+            EXSTYLE = -20,
+            HINSTANCE = -6,
+            HWNDPARENT = -8,
+            ID = -12,
+            STYLE = -16,
+            USERDATA = -21,
+            WNDPROC = -4
+        }
+
+        public enum WS : long
+        {
+            BORDER = 0x00800000L,
+            CAPTION = 0x00C00000L,
+            CHILD = 0x40000000L,
+            CHILDWINDOW = 0x40000000L,
+            CLIPCHILDREN = 0x02000000L,
+            CLIPSIBLINGS = 0x04000000L,
+            DISABLED = 0x08000000L,
+            DLGFRAME = 0x00400000L,
+            GROUP = 0x00020000L,
+            HSCROLL = 0x00100000L,
+            ICONIC = 0x20000000L,
+            MAXIMIZE = 0x01000000L,
+            MAXIMIZEBOX = 0x00010000L,
+            MINIMIZE = 0x20000000L,
+            MINIMIZEBOX = 0x00020000L,
+            OVERLAPPED = 0x00000000L,
+            OVERLAPPEDWINDOW = (OVERLAPPED | CAPTION | SYSMENU | THICKFRAME | MINIMIZEBOX | MAXIMIZEBOX),
+            POPUP = 0x80000000L,
+            POPUPWINDOW = (POPUP | BORDER | SYSMENU),
+            SIZEBOX = 0x00040000L,
+            SYSMENU = 0x00080000L,
+            TABSTOP = 0x00010000L,
+            THICKFRAME = 0x00040000L,
+            TILED = 0x00000000L,
+            TILEDWINDOW = (OVERLAPPED | CAPTION | SYSMENU | THICKFRAME | MINIMIZEBOX | MAXIMIZEBOX),
+            VISIBLE = 0x10000000L,
+            VSCROLL = 0x00200000L
+        }
+
+        public enum WS_EX : long
+        {
+            ACCEPTFILES = 0x00000010L,
+            APPWINDOW = 0x00040000L,
+            CLIENTEDGE = 0x00000200L,
+            COMPOSITED = 0x02000000L,
+            CONTEXTHELP = 0x00000400L,
+            CONTROLPARENT = 0x00010000L,
+            DLGMODALFRAME = 0x00000001L,
+            LAYERED = 0x00080000L,
+            LAYOUTRTL = 0x00400000L,
+            LEFT = 0x00000000L,
+            LEFTSCROLLBAR = 0x00004000L,
+            LTRREADING = 0x00000000L,
+            MDICHILD = 0x00000040L,
+            NOACTIVATE = 0x08000000L,
+            NOINHERITLAYOUT = 0x00100000L,
+            NOPARENTNOTIFY = 0x00000004L,
+            NOREDIRECTIONBITMAP = 0x00200000L,
+            OVERLAPPEDWINDOW = (WINDOWEDGE | CLIENTEDGE),
+            PALETTEWINDOW = (WINDOWEDGE | TOOLWINDOW | TOPMOST),
+            RIGHT = 0x00001000L,
+            RIGHTSCROLLBAR = 0x00000000L,
+            RTLREADING = 0x00002000L,
+            STATICEDGE = 0x00020000L,
+            TOOLWINDOW = 0x00000080L,
+            TOPMOST = 0x00000008L,
+            TRANSPARENT = 0x00000020L,
+            WINDOWEDGE = 0x00000100L
+        }
+
+        public enum HWND
+        {
+            BOTTOM = 1,
+            NOTOPMOST = -2,
+            TOP = 0,
+            TOPMOST = -1
+        }
+
+        public enum SWP
+        {
+            ASYNCWINDOWPOS = 0x4000,
+            DEFERERASE = 0x2000,
+            DRAWFRAME = 0x0020,
+            FRAMECHANGED = 0x0020,
+            HIDEWINDOW = 0x0080,
+            NOACTIVATE = 0x0010,
+            NOCOPYBITS = 0x0100,
+            NOMOVE = 0x0002,
+            NOOWNERZORDER = 0x0200,
+            NOREDRAW = 0x0008,
+            NOREPOSITION = 0x0200,
+            NOSENDCHANGING = 0x0400,
+            NOSIZE = 0x0001,
+            NOZORDER = 0x0004,
+            SHOWWINDOW = 0x0040
+        }
+
         public class SongData : EventArgs
         {
             public string SongName { get; set; }
