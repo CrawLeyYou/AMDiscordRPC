@@ -34,7 +34,7 @@ namespace AMDiscordRPC
                             imageRes["results"][0]["collectionName"].ToString(),
                             imageRes["results"][0]["artistViewUrl"].ToString()
                         );
-                        UpdateAlbum(new SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL, null, null, null, webRes.artistURL));
+                        InsertAlbum(new SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL, null, null, null, webRes.artistURL));
                         CoverThread = null;
                         return webRes;
                     }
@@ -83,7 +83,7 @@ namespace AMDiscordRPC
                         document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > span > a")[0].GetAttribute("href")
                     );
                     CoverThread = null;
-                    UpdateAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL, null, null, null, webRes.artistURL));
+                    InsertAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL, null, null, null, webRes.artistURL));
                     return webRes;
                 }
                 else

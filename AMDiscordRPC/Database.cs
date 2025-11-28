@@ -1,5 +1,4 @@
-﻿using Amazon.Runtime.Internal.Transform;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
@@ -12,12 +11,12 @@ namespace AMDiscordRPC
         private static SQLiteConnection sqlite;
         public static readonly Dictionary<string, string> sqlMap = new Dictionary<string, string>()
         {
-            //{"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistSource TEXT, animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" },
+            {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistSource TEXT, animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" }, // will be replaced
             {"coverTableNew", "coverID INTEGER PRIMARY KEY AUTOINCREMENT, staticCoverURL TEXT NOT NULL, isAnimated BOOLEAN CHECK (isAnimated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT"},
             {"artistTable", "artistID INTEGER PRIMARY KEY AUTOINCREMENT, artistName TEXT NOT NULL, artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistProfileSource TEXT"},
             {"albumTable", "albumID INTEGER PRIMARY KEY AUTOINCREMENT, albumName TEXT NOT NULL, albumURL TEXT UNIQUE, isSingle BOOLEAN CHECK (isSingle IN (0,1)), coverID INTEGER, artistID INTEGER, FOREIGN KEY (coverID) REFERENCES coverTableNew(coverID), FOREIGN KEY (artistID) REFERENCES artistTable(artistID)"},
             {"songTable", "songTitle TEXT, songURL TEXT, albumID INTEGER, artistID INTEGER, FOREIGN KEY (albumID) REFERENCES albumTable(albumID), FOREIGN KEY (artistID) REFERENCES artistTable(artistID)"},
-            {"creds", "S3_accessKey TEXT, S3_secretKey TEXT, S3_serviceURL TEXT, S3_bucketName TEXT, S3_bucketURL TEXT, S3_isSpecificKey BOOLEAN CHECK (S3_isSpecificKey IN (0,1)), FFmpegPath TEXT" },
+            {"creds", "S3_accessKey TEXT, S3_secretKey TEXT, S3_serviceURL TEXT, S3_bucketName TEXT, S3_bucketURL TEXT, S3_isSpecificKey BOOLEAN CHECK (S3_isSpecificKey IN (0,1)), FFmpegPath TEXT, LastFMToken TEXT" },
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" },
             {"clientSettings", "smallImage INTEGER"}
         };
@@ -105,18 +104,18 @@ namespace AMDiscordRPC
 
         public static void UpdateAlbum(SQLCoverResponse data)
         {
-            ExecuteNonQueryCommand($"UPDATE coverTable SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) WHERE album = '{data.album}'");
+            ExecuteNonQueryCommand($"UPDATE coverTable SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) WHERE album = @album", new[] { new SQLiteParameter("@album", data.album)});
         }
 
-        public static void CheckAndInsertAlbum(string album)
+        public static void InsertAlbum(SQLCoverResponse data)
         {
-            if (ExecuteScalarCommand($"SELECT album from coverTable WHERE album = '{album}'") == null)
-                ExecuteNonQueryCommand($"INSERT INTO coverTable(album) VALUES ('{album}')");
+            if (ExecuteScalarCommand($"SELECT album from coverTable WHERE album = @album", new[] { new SQLiteParameter("@album", data.album) }) == null)
+                ExecuteNonQueryCommand($@"INSERT INTO coverTable(album, {string.Join(", ", data.GetNotNullKeys())}) VALUES (@album, {string.Join(", ", data.GetNotNullValues())})", new[] {new SQLiteParameter("@album", data.album)});
         }
 
         public static SQLCoverResponse GetAlbumDataFromSQL(string album)
         {
-            using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT * FROM coverTable WHERE album = '{album}' LIMIT 1"))
+            using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT * FROM coverTable WHERE album = @album LIMIT 1", new[] { new SQLiteParameter("@album", album) }))
             {
                 while (reader.Read())
                 {
@@ -131,6 +130,32 @@ namespace AMDiscordRPC
                         );
                 }
             }
+            return null;
+        }
+
+        public static SQLSongResponse GetSongFromDB(string song, string album, string artist)
+        {
+            string cmd = @"
+            SELECT
+                IIF(coverTableNew.isAnimated = 1, coverTableNew.animatedURL, coverTableNew.staticCoverURL) as coverURL,
+                artistTable.artistRedirURL as artistRedirURL,
+                artistTable.artistProfileSource as artistProfileSource,
+                albumTable.albumURL,
+                songTable.songURL
+            FROM songTable
+                INNER JOIN albumTable on albumTable.albumID = songTable.albumID
+                INNER JOIN artistTable on artistTable.artistID = albumTable.artistID
+                INNER JOIN coverTableNew on coverTableNew.coverID = albumTable.coverID
+            WHERE
+                artistTable.artistName = @artist
+                AND songTable.songTitle = @song
+                AND albumTable.albumName = @album;
+            ";
+            using (SQLiteDataReader reader = ExecuteReaderCommand(cmd, new[] { new SQLiteParameter("@album", album), new SQLiteParameter("@song", song), new SQLiteParameter("@artist", artist) }))
+            {
+
+            }
+
             return null;
         }
 
@@ -201,11 +226,12 @@ namespace AMDiscordRPC
             return columnsMap;
         }
 
-        public static object ExecuteScalarCommand(string command)
+        public static object ExecuteScalarCommand(string command, SQLiteParameter[] parameters = null)
         {
             try
             {
-                SQLiteCommand cmd = new SQLiteCommand($@"{command}", sqlite);
+                SQLiteCommand cmd = new SQLiteCommand(command, sqlite);
+                if (parameters != null) cmd.Parameters.AddRange(parameters);
                 return cmd.ExecuteScalar();
             }
             catch (Exception ex)
@@ -215,11 +241,12 @@ namespace AMDiscordRPC
             }
         }
 
-        public static SQLiteDataReader ExecuteReaderCommand(string command)
+        public static SQLiteDataReader ExecuteReaderCommand(string command, SQLiteParameter[] parameters = null)
         {
             try
             {
-                SQLiteCommand cmd = new SQLiteCommand($@"{command}", sqlite);
+                SQLiteCommand cmd = new SQLiteCommand(command, sqlite);
+                if (parameters != null) cmd.Parameters.AddRange(parameters);
                 return cmd.ExecuteReader();
             }
             catch (Exception ex)
@@ -229,11 +256,12 @@ namespace AMDiscordRPC
             }
         }
 
-        public static int ExecuteNonQueryCommand(string command)
+        public static int ExecuteNonQueryCommand(string command, SQLiteParameter[] parameters = null)
         {
             try
             {
-                SQLiteCommand cmd = new SQLiteCommand($@"{command}", sqlite);
+                SQLiteCommand cmd = new SQLiteCommand(command, sqlite);
+                if (parameters != null) cmd.Parameters.AddRange(parameters);
                 return cmd.ExecuteNonQuery();
             }
             catch (Exception ex)
@@ -274,7 +302,7 @@ namespace AMDiscordRPC
             }
         }
 
-        public class ForeignKey
+        private class ForeignKey
         {
             public string key { get; set; }
             public string refTable { get; set; }
@@ -320,6 +348,92 @@ namespace AMDiscordRPC
                 return GetType().GetProperties().Where(s => s.GetValue(this) != null && s.GetValue(this) != this.album).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
             }
 
+        }
+
+        public class SQLSongResponse
+        {
+            public SQLCoverData? cover;
+            public SQLAlbumData? album;
+            public SQLArtistData? artist;
+            public SQLSongData? song;
+
+            public SQLSongResponse(SQLCoverData cover, SQLAlbumData album, SQLArtistData artist, SQLSongData song)
+            {
+                this.cover = cover;
+                this.album = album;
+                this.artist = artist;
+                this.song = song;
+            }
+        }
+
+        public class SQLCoverData
+        {
+            public int id;
+            public string staticCoverURL;
+            public bool? isAnimated;
+            public string? streamURL;
+            public string? animatedURL;
+
+            public SQLCoverData(int id, string staticCoverURL, bool? isAnimated, string? streamURL, string? animatedURL)
+            {
+                this.id = id;
+                this.staticCoverURL = staticCoverURL;
+                this.isAnimated = isAnimated;
+                this.streamURL = streamURL;
+                this.animatedURL = animatedURL;
+            }
+        }
+
+        public class SQLArtistData
+        {
+            public int id;
+            public string artistName;
+            public string artistRedirURL;
+            public string? artistProfileSource;
+
+            public SQLArtistData(int id, string artistName, string artistRedirURL, string? artistProfileSource)
+            {
+                this.id = id;
+                this.artistName = artistName;
+                this.artistRedirURL = artistRedirURL;
+                this.artistProfileSource = artistProfileSource;
+            }
+        }
+
+        public class SQLAlbumData
+        {
+            public int id;
+            public string albumName;
+            public string albumURL;
+            public bool isSingle;
+            public int? coverID; // Foreign Key
+            public int? artistID; // Foreign Key
+
+            public SQLAlbumData(int id, string albumName, string albumURL, bool isSingle, int coverID, int artistID)
+            {
+                this.id = id;
+                this.albumName = albumName;
+                this.albumURL = albumURL;
+                this.isSingle = isSingle;
+                this.coverID = coverID;
+                this.artistID = artistID;
+            }
+        }
+
+        public class SQLSongData
+        {
+            public string songTitle;
+            public string songURL;
+            public int? albumID; // Foreign Key
+            public int? artistID; // Foreign Key
+
+            public SQLSongData(string songTitle, string songURL, int albumID, int artistID)
+            {
+                this.songTitle = songTitle;
+                this.songURL = songURL;
+                this.albumID = albumID;
+                this.artistID = artistID;
+            }
         }
     }
 }

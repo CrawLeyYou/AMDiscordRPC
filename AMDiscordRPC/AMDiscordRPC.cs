@@ -26,7 +26,7 @@ namespace AMDiscordRPC
             InitDiscordRPC();
             AttachToAM();
             AMSongDataEvent.SongChanged += async (sender, x) =>
-             {
+            {
                  log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
                  AMDiscordRPCTray.ChangeSongState($"{x.ArtistandAlbumName.Split('—')[0]} - {x.SongName}");
                  if (x.ArtistandAlbumName == oldAlbumnArtist && oldData.Assets.LargeImageKey != null)
@@ -43,7 +43,7 @@ namespace AMDiscordRPC
                      SetPresence(x, httpRes);
                      oldAlbumnArtist = x.ArtistandAlbumName;
                  }
-             };
+            };
             CheckDatabaseIntegrity();
             ConfigureFromDB();
             CheckFFmpeg();
@@ -181,7 +181,6 @@ namespace AMDiscordRPC
                                     }
                                     else log.Debug("Continue");
                                     string idontknowwhatshouldinamethisbutitsaboutalbum = (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray());
-                                    CheckAndInsertAlbum(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1]);
                                     Task t = new Task(async () =>
                                     {
                                         httpRes = await GetCover(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1], Uri.EscapeDataString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()) + $" {currentSong}"));
