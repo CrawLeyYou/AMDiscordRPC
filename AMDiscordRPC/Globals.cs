@@ -8,7 +8,10 @@ using log4net.Core;
 using log4net.Filter;
 using log4net.Layout;
 using log4net.Repository.Hierarchy;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
@@ -16,8 +19,10 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.UI;
 
@@ -35,13 +40,18 @@ namespace AMDiscordRPC
         public static readonly Assembly assembly = Assembly.GetExecutingAssembly();
         public static HtmlParser parser = new HtmlParser();
         public static RichPresence oldData = new RichPresence();
-        public static WebSongResponse httpRes = new WebSongResponse();
+        public static SQLRPCResponse httpRes = new SQLRPCResponse();
         public static string ffmpegPath;
         public static S3_Creds S3_Credentials;
         private static List<string> newMatchesArr;
         public static S3ConnectionStatus S3Status = S3ConnectionStatus.Disconnected;
         public static string AMRegion;
         public static SmallImage SelectedSmallImage = SmallImage.LossDolby;
+        public static CloudflareTypes.AccountCredentials CfAccountCredentials = new CloudflareTypes.AccountCredentials(
+            "",
+            "",
+            ""
+        );
 
         public static void ConfigureLogger()
         {
@@ -96,7 +106,7 @@ namespace AMDiscordRPC
             catch (Exception e)
             {
                 log.Error($"Error happened while trying to select region, falling back to US Apple Music. Cause: {e}");
-                AMRegion = "US";
+                AMRegion = "us";
             }
         }
 
@@ -216,6 +226,14 @@ namespace AMDiscordRPC
             None
         }
 
+        public enum SecondaryType
+        {
+            EP,
+            Album,
+            Single,
+            MV
+        }
+
         public enum GWLP {
             EXSTYLE = -20,
             HINSTANCE = -6,
@@ -324,7 +342,9 @@ namespace AMDiscordRPC
             public DateTime EndTime { get; set; }
             public AudioFormat format { get; set; }
 
-            public SongData(string SongName, string ArtistandAlbumName, bool IsMV, DateTime StartTime, DateTime EndTime, AudioFormat format)
+            public bool isSingle { get; set; }
+
+            public SongData(string SongName, string ArtistandAlbumName, bool IsMV, DateTime StartTime, DateTime EndTime, AudioFormat format, bool isSingle)
             {
                 this.SongName = SongName;
                 this.ArtistandAlbumName = ArtistandAlbumName;
@@ -332,6 +352,7 @@ namespace AMDiscordRPC
                 this.StartTime = StartTime;
                 this.EndTime = EndTime;
                 this.format = format;
+                this.isSingle = isSingle;
             }
         }
 
@@ -375,6 +396,28 @@ namespace AMDiscordRPC
             }
         }
 
+        public class AppleMusicScrapedData
+        {
+            public string ArtistName { get; set; }
+            public string SongName { get; set; }
+            public string AlbumName { get; set; }
+
+            public SecondaryType? Type { get; set; }
+
+            public AppleMusicScrapedData(string ArtistName = null, string SongName = null, string AlbumName = null, SecondaryType? Type = null)
+            {
+                this.ArtistName = ArtistName;
+                this.SongName = SongName;
+                this.AlbumName = AlbumName;
+                this.Type = Type;
+            }
+
+            public string GetSearchString()
+            {
+                return Uri.EscapeDataString($"{SongName} {ArtistName} — {AlbumName} - {Type.ToString()}");
+            }
+        }
+        
         public class WebSongResponse
         {
             public string artworkURL { get; set; }
@@ -399,6 +442,125 @@ namespace AMDiscordRPC
                        artistURL == other.artistURL;
             }
         }
+
+        [JsonConverter(typeof(StringEnumConverter))]
+        public class CloudflareTypes
+        {
+            public static readonly string endpointV4 = "https://api.cloudflare.com/client/v4";
+
+            public enum Jurisdiction
+            {
+                [EnumMember(Value = "default")]
+                Default = 0,
+
+                [EnumMember(Value = "eu")]
+                EU = 1,
+
+                [EnumMember(Value = "fedramp")]
+                FedRAMP = 2
+            }
+
+            public enum Location
+            {
+                [EnumMember(Value = "apac")]
+                APAC,
+
+                [EnumMember(Value = "eeur")]
+                EEUR,
+
+                [EnumMember(Value = "enam")]
+                ENAM,
+
+                [EnumMember(Value = "weur")]
+                WEUR,
+
+                [EnumMember(Value = "wnam")]
+                WNAM,
+
+                [EnumMember(Value = "oc")]
+                OC
+            }
+
+            public enum StorageClass
+            {
+                [EnumMember(Value = "standard")]
+                Standard,
+
+                [EnumMember(Value = "infrequent_access")]
+                InfrequentAccess
+            }
+
+            public class ResponseInfo
+            {
+                public int code { get; set; }
+                public string message { get; set; }
+                public string documentation_url { get; set; }
+                public Source source { get; set; }
+
+                public ResponseInfo(int code, string message, string documentation_url, Source source)
+                {
+                    this.code = code;
+                    this.message = message;
+                    this.documentation_url = documentation_url;
+                    this.source = source;
+                }
+            }
+
+            public class Response
+            {
+                public List<ResponseInfo> errors { get; set; }
+                public dynamic messages { get; set; }
+                public dynamic result { get; set; }
+                public bool success { get; set; }
+
+                public Response(List<ResponseInfo> errors, dynamic messages, dynamic result, bool success)
+                {
+                    this.errors = errors;
+                    this.messages = messages;
+                    this.result = result;
+                    this.success = success;
+                }
+            }
+
+            public class Source
+            {
+                public string pointer { get; set; }
+            }
+
+            public class Bucket
+            {
+                public DateTime creation_date { get; set; }
+                public Jurisdiction jurisdiction { get; set; }
+                public Location location { get; set; }
+                public string name { get; set; }
+                public StorageClass storage_class { get; set; }
+
+                [JsonConstructor]
+                public Bucket(DateTime creation_date, Jurisdiction jurisdiction, Location location, string name, StorageClass storage_class)
+                {
+                    this.creation_date = creation_date;
+                    this.jurisdiction = jurisdiction;
+                    this.location = location;
+                    this.name = name;
+                    this.storage_class = storage_class;
+                }
+            }
+
+            public class AccountCredentials
+            {
+                public string api_token { get; set; }
+                public string zone_id { get; set; }
+                public string account_id { get; set; }
+
+                public AccountCredentials(string api_token, string zone_id, string account_id)
+                {
+                    this.api_token = api_token;
+                    this.zone_id = zone_id;
+                    this.account_id = account_id;
+                }
+            }
+        }
+
         public static String TrimEnd(this String str, int count)
         {
             return str.Substring(0, str.Length - count);
