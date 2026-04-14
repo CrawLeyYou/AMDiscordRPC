@@ -18,10 +18,10 @@ namespace AMDiscordRPC
 {
     internal class Playlist
     {
-        public static async Task ConvertM3U8(string album, string playlistUrl, CancellationToken ct)
+        public static async Task ConvertM3U8(string albumURL, string playlistUrl, CancellationToken ct)
         {
             // ^I thought storing Master Playlist would be better for in case of bucket changes and Apple's codec changes on lowest quality.
-            Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, true, playlistUrl));
+            Database.UpdateAlbumCover(albumURL, new Database.SQLCoverData(0, null, true, playlistUrl, null));
             StreamInf playlist = await FetchResolution(playlistUrl);
             if (!ct.IsCancellationRequested && playlist != null)
             {
@@ -48,7 +48,7 @@ namespace AMDiscordRPC
                     if (S3Status == S3ConnectionStatus.Connected) servedPath = await PutGIF(gifPath, fileName.Replace(".mp4", ".gif"));
                     else throw new Exception("S3 is not properly configured.");
                     log.Debug("Put S3 Bucket");
-                    Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, null, null, servedPath));
+                    Database.UpdateAlbumCover(albumURL, new Database.SQLCoverData(0, null, null, null, servedPath));
                     if (ct.IsCancellationRequested) throw new Exception("Cancelled");
                     SetCover(servedPath);
                     log.Debug("Set Animated Cover");

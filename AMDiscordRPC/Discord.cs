@@ -114,7 +114,7 @@ namespace AMDiscordRPC
             if (resp.coverURL != null && !resp.coverURL.Contains((S3_Credentials != null) ? (S3_Credentials.GetNullKeys().Count == 0) ? S3_Credentials.bucketURL : "" : ""))
             {
                 animatedCoverCts = new CancellationTokenSource();
-                Task t = new Task(() => CheckAnimatedCover(ConvertToValidString(x.ArtistandAlbumName.Split('—')[1]), resp.songURL, animatedCoverCts.Token));
+                Task t = new Task(() => CheckAnimatedCover(resp.albumURL, animatedCoverCts.Token));
                 t.Start();
             }
         }

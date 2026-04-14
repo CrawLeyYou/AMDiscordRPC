@@ -20,7 +20,7 @@ namespace AMDiscordRPC
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" },
             {"clientSettings", "smallImage INTEGER"}
         };
-
+        
         private static void InitDatabase()
         {
             try
@@ -56,13 +56,44 @@ namespace AMDiscordRPC
 
         private static void CreateDatabase()
         {
-            foreach (var item in sqlMap)
+            using (var transaction = sqlite.BeginTransaction())
             {
-                ExecuteNonQueryCommand($"CREATE TABLE IF NOT EXISTS {item.Key}({item.Value})");
+                try
+                {
+                    foreach (var item in sqlMap)
+                    {
+                        ExecuteNonQueryCommand($"CREATE TABLE IF NOT EXISTS {item.Key}({item.Value})");
+                    }
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    log.Error($"An error occured while creating database: {ex}");
+                    transaction.Rollback();
+                }
             }
+            CreateIndexes();
         }
 
-        // Note: source, streamurl, animated, animatedUrl can be stored in external table so we decrease the file size of database
+        private static void CreateIndexes()
+        {
+            using (var transaction = sqlite.BeginTransaction())
+            {
+                try
+                {
+                    ExecuteNonQueryCommand($"CREATE INDEX IF NOT EXISTS idx_albumName ON albumTable(albumName)");
+                    ExecuteNonQueryCommand($"CREATE INDEX IF NOT EXISTS idx_songTitle ON songTable(songTitle)");
+                    ExecuteNonQueryCommand($"CREATE INDEX IF NOT EXISTS idx_artistName ON artistTable(artistName)");
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    log.Error($"An error occured while creating indexes: {ex}");
+                    transaction.Rollback();
+                }
+            }
+        }
+        
         private static void CheckForeignKeys()
         {
             ExecuteNonQueryCommand("PRAGMA foreign_keys = on");
@@ -98,21 +129,20 @@ namespace AMDiscordRPC
                 {
                     ExecuteNonQueryCommand($"CREATE TABLE IF NOT EXISTS {item}({sqlMap[item]})");
                 }
+                CreateIndexes();
             }
             else log.Debug("No missing table found.");
         }
 
-        public static void UpdateAlbum(SQLCoverResponse data)
+        public static void UpdateAlbumCover(string albumURL, SQLCoverData data)
         {
-            ExecuteNonQueryCommand($"UPDATE coverTable SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) WHERE album = @album", new[] { new SQLiteParameter("@album", data.album)});
+                int rowsAffected = ExecuteNonQueryCommand($@"UPDATE coverTableNew SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) FROM albumTable WHERE coverTableNew.coverID = albumTable.coverID AND albumURL = @albumURL;", new[] { new SQLiteParameter("@albumURL", albumURL)});
+                if (rowsAffected == 0)
+                {
+                    log.Warn($"This album is not present in database. Skipping {albumURL}");
+                }
         }
-
-        public static void InsertAlbum(SQLCoverResponse data)
-        {
-            if (ExecuteScalarCommand($"SELECT album from coverTable WHERE album = @album", new[] { new SQLiteParameter("@album", data.album) }) == null)
-                ExecuteNonQueryCommand($@"INSERT INTO coverTable(album, {string.Join(", ", data.GetNotNullKeys())}) VALUES (@album, {string.Join(", ", data.GetNotNullValues())})", new[] {new SQLiteParameter("@album", data.album)});
-        }
-
+        
         public static int InsertAlbumNew(SQLAlbumData data)
         {
             using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT albumID FROM albumTable WHERE albumURL = @albumURL", new[] { new SQLiteParameter("@albumURL", data.albumURL) }))
@@ -435,7 +465,6 @@ namespace AMDiscordRPC
             {
                 return GetType().GetProperties().Where(s => s.GetValue(this) != null && s.GetValue(this) != this.album).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
             }
-
         }
 
         public class SQLSongResponse
@@ -473,11 +502,11 @@ namespace AMDiscordRPC
 
         public class SQLCoverData
         {
-            public int id;
-            public string staticCoverURL;
-            public bool? isAnimated;
-            public string? streamURL;
-            public string? animatedURL;
+            public int id { get; set; }
+            public string staticCoverURL { get; set; }
+            public bool? isAnimated { get; set; }
+            public string? streamURL { get; set; }
+            public string? animatedURL { get; set; }
 
             public SQLCoverData(int id, string staticCoverURL, bool? isAnimated, string? streamURL, string? animatedURL)
             {
@@ -486,6 +515,21 @@ namespace AMDiscordRPC
                 this.isAnimated = isAnimated;
                 this.streamURL = streamURL;
                 this.animatedURL = animatedURL;
+            }
+            public List<string> GetNotNullKeys()
+            {
+                return GetType().GetProperties()
+                    .Where(s => s.GetValue(this) != null && !s.GetValue(this).Equals(id) && s.GetValue(this) != staticCoverURL)
+                    .Select(p => p.Name)
+                    .ToList();
+            }
+
+            public List<object> GetNotNullValues()
+            {
+                return GetType().GetProperties()
+                    .Where(s => s.GetValue(this) != null && !s.GetValue(this).Equals(id) && s.GetValue(this) != staticCoverURL)
+                    .Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this))
+                    .ToList();
             }
         }
 

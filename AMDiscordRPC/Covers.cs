@@ -61,54 +61,7 @@ namespace AMDiscordRPC
                 return null;
             }
         }
-
-        /*
-        private static async Task<WebSongResponse> AsyncFetchiTunes(string album, string searchStr)
-        {
-            try
-            {
-                //idk why but sometimes when you search as "Artist - Album Track" and if Album and Track named same it returns random song from album
-                //ex: "Poppy - Negative Spaces negative spaces" Returns "Poppy - New Way Out" as a track link
-                HttpResponseMessage iTunesReq = await hclient.GetAsync($"https://itunes.apple.com/search?term={searchStr}&limit=1&entity=song&country={AMRegion}");
-                if (iTunesReq.IsSuccessStatusCode)
-                {
-                    dynamic imageRes = JObject.Parse(await iTunesReq.Content.ReadAsStringAsync());
-                    if (imageRes["resultCount"] != 0)
-                    {
-                        WebSongResponse webRes = new WebSongResponse
-                        (
-                            imageRes["results"][0]["artworkUrl100"].ToString(),
-                            imageRes["results"][0]["trackViewUrl"].ToString(),
-                            imageRes["results"][0]["collectionName"].ToString(),
-                            imageRes["results"][0]["artistViewUrl"].ToString()
-                        );
-                        InsertAlbum(new SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL, null, null, null, webRes.artistURL));
-                        CoverThread = null;
-                        return webRes;
-                    }
-                    else
-                    {
-                        log.Warn("iTunes no image found");
-                        CoverThread = null;
-                        return new WebSongResponse();
-                    }
-                }
-                else
-                {
-                    log.Warn("iTunes request failed");
-                    CoverThread = null;
-                    return new WebSongResponse();
-                }
-            }
-            catch (Exception e)
-            {
-                log.Error($"iTunes Exception {e.Message}");
-                CoverThread = null;
-                return new WebSongResponse();
-            }
-        }
-
-    */
+        
         public static async Task<string> AsyncArtistProfileFetch(string url)
         {
             try
@@ -132,43 +85,7 @@ namespace AMDiscordRPC
             }
             return null;
         }
-
-        /*
-        public static async Task<WebSongResponse> AsyncAMFetch(string album, string searchStr)
-        {
-            log.Debug($"https://music.apple.com/{AMRegion.ToLower()}/search?term={searchStr}");
-            try
-            {
-                HttpResponseMessage AMRequest = await hclient.GetAsync($"https://music.apple.com/{AMRegion.ToLower()}/search?term={searchStr}");
-                if (AMRequest.IsSuccessStatusCode)
-                {
-                    string DOMasAString = await AMRequest.Content.ReadAsStringAsync();
-                    IHtmlDocument document = parser.ParseDocument(DOMasAString);
-
-                    WebSongResponse webRes = new WebSongResponse(
-                        document.DocumentElement.QuerySelectorAll("div.track-lockup__artwork-wrapper > div > picture > source")[1].GetAttribute("srcset").Split(',')[1].Split(' ')[0],
-                        document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > a")[0].GetAttribute("href"),
-                        null,
-                        document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > span > a")[0].GetAttribute("href")
-                    );
-                    CoverThread = null;
-                    InsertAlbum(new Database.SQLCoverResponse(album, webRes.artworkURL, webRes.trackURL, null, null, null, webRes.artistURL));
-                    return webRes;
-                }
-                else
-                {
-                    log.Error($"Apple Music request failed returned: {AMRequest.StatusCode}");
-                    return await AsyncFetchiTunes(album, searchStr);
-                }
-            }
-            catch (Exception e)
-            {
-                log.Error($"Apple Music Request failed. {e}");
-                return await AsyncFetchiTunes(album, searchStr);
-            }
-        }
-         */
-
+        
         public static async Task<SQLSongResponse> AsyncAMFetch(AppleMusicScrapedData data)
         {
             log.Debug($"https://music.apple.com/{AMRegion.ToLower()}/search?term={data.GetSearchString()}");
@@ -205,17 +122,17 @@ namespace AMDiscordRPC
             }
         }
 
-        public static async Task CheckAnimatedCover(string album, string url, CancellationToken ct)
+        public static async Task CheckAnimatedCover(string albumUrl, CancellationToken ct)
         {
             try
             {
-                var appleMusicDom = await hclient.GetAsync(url);
-                log.Debug($"Animated Cover Request: {url}");
+                var appleMusicDom = await hclient.GetAsync(albumUrl);
+                log.Debug($"Animated Cover Request: {albumUrl}");
                 if (appleMusicDom.IsSuccessStatusCode)
                 {
                     string DOMasAString = await appleMusicDom.Content.ReadAsStringAsync();
                     IHtmlDocument document = parser.ParseDocument(DOMasAString);
-                    ConvertM3U8(album, document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0], ct);
+                    ConvertM3U8(albumUrl, document.DocumentElement.QuerySelector("div.video-artwork__container").InnerHtml.Split(new string[] { "src=\"" }, StringSplitOptions.None)[1].Split('"')[0], ct);
                 }
                 else
                 {
@@ -227,40 +144,9 @@ namespace AMDiscordRPC
             {
                 log.Error($"Apple Music animatedCover exception: {e.Message}");
                 Discord.animatedCoverCts = null;
-                Database.UpdateAlbum(new Database.SQLCoverResponse(album, null, null, false));
+                UpdateAlbumCover(albumUrl, new SQLCoverData(0, null, false, null, null));
             }
         }
-
-        /*
-         * old method will deleted
-        public static async Task<WebSongResponse> GetCover(string album, string searchStr)
-        {
-            try
-            {
-                log.Debug($"https://music.apple.com/{AMRegion.ToLower()}/search?term={searchStr}");
-                SQLCoverResponse cover = GetAlbumDataFromSQL(album);
-                if (cover != null)
-                {
-                    WebSongResponse res = new WebSongResponse
-                    (
-                        (cover.animated == true && cover.animatedURL != null) ? cover.animatedURL : (cover.source != null) ? cover.source : throw new Exception("Source not found."),
-                        cover.redirURL,
-                        album
-                    );
-                    CoverThread = null;
-                    return res;
-                }
-                else
-                {
-                    return await AsyncAMFetch(album, searchStr);
-                }
-            }
-            catch (Exception ex)
-            {
-                return await AsyncAMFetch(album, searchStr);
-            }
-        }
-        */
 
         public static async Task<SQLRPCResponse> GetCover(AppleMusicScrapedData data)
         {
