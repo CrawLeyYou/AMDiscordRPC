@@ -11,7 +11,6 @@ using log4net.Repository.Hierarchy;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
@@ -22,7 +21,7 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Web;
+using AngleSharp.Dom;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.UI;
 
@@ -234,7 +233,8 @@ namespace AMDiscordRPC
             MV
         }
 
-        public enum GWLP {
+        public enum GWLP
+        {
             EXSTYLE = -20,
             HINSTANCE = -6,
             HWNDPARENT = -8,
@@ -417,7 +417,7 @@ namespace AMDiscordRPC
                 return Uri.EscapeDataString($"{SongName} {ArtistName} — {AlbumName} - {Type.ToString()}");
             }
         }
-        
+
         public class WebSongResponse
         {
             public string artworkURL { get; set; }
@@ -564,6 +564,75 @@ namespace AMDiscordRPC
         public static String TrimEnd(this String str, int count)
         {
             return str.Substring(0, str.Length - count);
+        }
+
+        public static String[] GetArtist(this IElement element, AppleMusicScrapedData data)
+        {
+            string[] returnData = new string[2];
+            foreach (IElement innerElement in element.QuerySelectorAll("div.ellipse-lockup-wrapper"))
+            {
+                string title = innerElement.QuerySelector("h3.title").TextContent;
+                if (data.ArtistName == title)
+                {
+                    returnData[0] = innerElement.QuerySelector("a.click-action").GetAttribute("href");
+                    returnData[1] = innerElement.QuerySelector("source[type=\"image/jpeg\"]").GetAttribute("srcset")
+                        .Split(' ')[0];
+                    return returnData;
+                }
+                else if (returnData[0] == null && data.ArtistName.Contains(title))
+                {
+                    returnData[0] = innerElement.QuerySelector("a.click-action").GetAttribute("href");
+                    returnData[1] = innerElement.QuerySelector("source[type=\"image/jpeg\"]").GetAttribute("srcset")
+                        .Split(' ')[0];
+                }
+            }
+            return (returnData[0] == null) ? null : returnData;
+            
+        }
+        
+        public static String GetAlbum(this IElement element, AppleMusicScrapedData data)
+        {
+            foreach (IElement innerElement in element.QuerySelector(@"div[aria-label=""Albums""]").QuerySelectorAll("div > div > section > div > ul > li"))
+            {
+                IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll("span.multiline-clamp__text > a");
+                if (texts[0].NormalizedText().Contains(data.AlbumName) && data.ArtistName.Contains(texts[1].NormalizedText()))
+                {
+                    return texts[0].GetAttribute("href");
+                }
+            }
+            return null;
+        }
+
+        public static String NormalizedText(this INode node)
+        {
+            return node.TextContent.Replace("  ", " ").Trim();
+        }
+        
+        public static String GetSong(this IElement element, AppleMusicScrapedData data)
+        {
+            foreach (IElement innerElement in element.QuerySelectorAll(@"ul.track-lockup__content"))
+            {
+                IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll(@"div.track-lockup__clamp-wrapper");
+                if (texts[0].NormalizedText() == data.SongName && data.ArtistName.Contains(texts[1].QuerySelector("span").NormalizedText()))
+                {
+                    return texts[0].QuerySelector("a").GetAttribute("href");
+                }
+            }
+            return null;
+        }
+        
+        public static String GetCover(this IElement element, AppleMusicScrapedData data)
+        {
+            foreach (IElement innerElement in element.QuerySelectorAll("div.track-lockup"))
+            {
+                if (data.SongName.Contains(innerElement.QuerySelector("ul > li > div > a").NormalizedText()) &&
+                    data.ArtistName.Contains(innerElement.QuerySelector("ul > li > div > span > a > span").NormalizedText()))
+                {
+                    return innerElement.QuerySelectorAll("div > div > div > picture > source")[1].GetAttribute("srcset")
+                        .Split(',')[1].Split(' ')[0];
+                }
+            }
+            return null;
         }
     }
 }

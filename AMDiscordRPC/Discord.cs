@@ -1,10 +1,7 @@
 ﻿using DiscordRPC;
-using DiscordRPC.IO;
-using DiscordRPC.IO;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Globals;
@@ -15,7 +12,7 @@ namespace AMDiscordRPC
     {
         private static Thread thread = null;
         public static CancellationTokenSource animatedCoverCts;
-        
+
         public static void InitDiscordRPC()
         {
             client = new DiscordRpcClient("1308911584164319282");

@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using static AMDiscordRPC.AppleMusic;
-using static AMDiscordRPC.Cloudflare;
 using static AMDiscordRPC.Covers;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Discord;
@@ -22,22 +21,22 @@ namespace AMDiscordRPC
         static void Main(string[] args)
         {
             ConfigureLogger();
-           // SetToken();
+            // SetToken();
             InitRegion();
             CreateUI();
             InitDiscordRPC();
-            AttachToAM(); 
+            AttachToAM();
             // ListBuckets();
             AMSongDataEvent.SongChanged += async (sender, x) =>
             {
-                 log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
-                 AMDiscordRPCTray.ChangeSongState($"{x.ArtistandAlbumName.Split('—')[0]} - {x.SongName}");
-                 if (x.ArtistandAlbumName == oldAlbumnArtist && oldData.Assets.LargeImageKey != null)
-                 {
-                     SetPresence(x);
-                 }
-                 else
-                 {
+                log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
+                AMDiscordRPCTray.ChangeSongState($"{x.ArtistandAlbumName.Split('—')[0]} - {x.SongName}");
+                if (x.ArtistandAlbumName == oldAlbumnArtist && oldData.Assets.LargeImageKey != null)
+                {
+                    SetPresence(x);
+                }
+                else
+                {
                     if (httpRes.Equals(new SQLRPCResponse()) || CoverThread != null)
                     {
                         httpRes = await GetCover(
@@ -47,11 +46,11 @@ namespace AMDiscordRPC
                                 x.ArtistandAlbumName.Split(new string[] { " — " }, StringSplitOptions.None)[1],
                                 (x.isSingle) ? SecondaryType.Single : (x.IsMV) ? SecondaryType.MV : (x.ArtistandAlbumName.Contains(" - EP") ? SecondaryType.EP : SecondaryType.Album)
                             ));
-                         log.Debug($"Set Cover: {((httpRes.coverURL != null) ? httpRes.coverURL : null)}");
-                     }
-                     SetPresence(x, httpRes);
-                     oldAlbumnArtist = x.ArtistandAlbumName;
-                 }
+                        log.Debug($"Set Cover: {((httpRes.coverURL != null) ? httpRes.coverURL : null)}");
+                    }
+                    SetPresence(x, httpRes);
+                    oldAlbumnArtist = x.ArtistandAlbumName;
+                }
             };
             CheckDatabaseIntegrity();
             ConfigureFromDB();

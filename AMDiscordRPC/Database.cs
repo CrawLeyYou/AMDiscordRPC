@@ -20,7 +20,7 @@ namespace AMDiscordRPC
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" },
             {"clientSettings", "smallImage INTEGER"}
         };
-        
+
         private static void InitDatabase()
         {
             try
@@ -93,7 +93,7 @@ namespace AMDiscordRPC
                 }
             }
         }
-        
+
         private static void CheckForeignKeys()
         {
             ExecuteNonQueryCommand("PRAGMA foreign_keys = on");
@@ -136,13 +136,13 @@ namespace AMDiscordRPC
 
         public static void UpdateAlbumCover(string albumURL, SQLCoverData data)
         {
-                int rowsAffected = ExecuteNonQueryCommand($@"UPDATE coverTableNew SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) FROM albumTable WHERE coverTableNew.coverID = albumTable.coverID AND albumURL = @albumURL;", new[] { new SQLiteParameter("@albumURL", albumURL)});
-                if (rowsAffected == 0)
-                {
-                    log.Warn($"This album is not present in database. Skipping {albumURL}");
-                }
+            int rowsAffected = ExecuteNonQueryCommand($@"UPDATE coverTableNew SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) FROM albumTable WHERE coverTableNew.coverID = albumTable.coverID AND albumURL = @albumURL;", new[] { new SQLiteParameter("@albumURL", albumURL) });
+            if (rowsAffected == 0)
+            {
+                log.Warn($"This album is not present in database. Skipping {albumURL}");
+            }
         }
-        
+
         public static int InsertAlbumNew(SQLAlbumData data)
         {
             using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT albumID FROM albumTable WHERE albumURL = @albumURL", new[] { new SQLiteParameter("@albumURL", data.albumURL) }))
@@ -221,26 +221,6 @@ namespace AMDiscordRPC
             }
         }
 
-        public static SQLCoverResponse GetAlbumDataFromSQL(string album)
-        {
-            using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT * FROM coverTable WHERE album = @album LIMIT 1", new[] { new SQLiteParameter("@album", album) }))
-            {
-                while (reader.Read())
-                {
-                    return new SQLCoverResponse(
-                        reader.GetString(0),
-                        !reader.IsDBNull(1) ? reader.GetString(1) : null,
-                        reader.GetString(2),
-                        !reader.IsDBNull(3) ? reader.GetBoolean(3) : null,
-                        !reader.IsDBNull(4) ? reader.GetString(4) : null,
-                        !reader.IsDBNull(5) ? reader.GetString(5) : null,
-                        reader.GetString(6)
-                        );
-                }
-            }
-            return null;
-        }
-
         public static SQLRPCResponse GetSongFromDB(string song, string album, string artist)
         {
             string cmd = @"
@@ -287,7 +267,7 @@ namespace AMDiscordRPC
                 while (data.Read())
                 {
                     if (data.GetString(0) == "table" && data.GetString(2) == table)
-                    { 
+                    {
                         string sqlStr = string.Join("(", data.GetString(4).Split(new[] { "CREATE TABLE " }, StringSplitOptions.None)[1].Split('(').Skip(1)).TrimEnd(1);
                         var temp = ConvertSQLStringToColumnInfo(sqlStr);
                         foreach (var keyValuePair in temp)
@@ -431,39 +411,6 @@ namespace AMDiscordRPC
                 this.key = key;
                 this.refTable = refTable;
                 this.refColumn = refColumn;
-            }
-        }
-
-        public class SQLCoverResponse
-        {
-            public string album { get; set; }
-            public string source { get; set; }
-            public string redirURL { get; set; }
-            public bool? animated { get; set; }
-            public string streamURL { get; set; }
-            public string animatedURL { get; set; }
-            public string artistRedirURL { get; set; }
-
-
-            public SQLCoverResponse(string album = null, string source = null, string redirURL = null, bool? animated = null, string streamURL = null, string animatedURL = null, string artistRedirURL = null)
-            {
-                this.album = album;
-                this.source = source;
-                this.redirURL = redirURL;
-                this.animated = animated;
-                this.streamURL = streamURL;
-                this.animatedURL = animatedURL;
-                this.artistRedirURL = artistRedirURL;
-            }
-
-            public List<string> GetNotNullKeys()
-            {
-                return GetType().GetProperties().Where(s => s.GetValue(this) != null && s.GetValue(this) != this.album).Select(p => p.Name).ToList();
-            }
-
-            public List<object> GetNotNullValues()
-            {
-                return GetType().GetProperties().Where(s => s.GetValue(this) != null && s.GetValue(this) != this.album).Select(p => (p.PropertyType == typeof(string)) ? $"'{p.GetValue(this)}'" : p.GetValue(this)).ToList();
             }
         }
 

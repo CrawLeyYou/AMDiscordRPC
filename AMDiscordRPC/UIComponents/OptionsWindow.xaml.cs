@@ -1,8 +1,4 @@
-﻿
-using System;
-using System.Management.Instrumentation;
-using System.Text.RegularExpressions;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using static AMDiscordRPC.Globals;
 

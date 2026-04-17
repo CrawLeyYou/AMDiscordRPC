@@ -1,13 +1,10 @@
-﻿using Amazon.Runtime.Documents;
-using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
+﻿using AngleSharp.Html.Dom;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Markup;
-using System.Xml.Linq;
+using AngleSharp.Dom;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.Globals;
 using static AMDiscordRPC.Playlist;
@@ -61,7 +58,7 @@ namespace AMDiscordRPC
                 return null;
             }
         }
-        
+
         public static async Task<string> AsyncArtistProfileFetch(string url)
         {
             try
@@ -85,7 +82,7 @@ namespace AMDiscordRPC
             }
             return null;
         }
-        
+
         public static async Task<SQLSongResponse> AsyncAMFetch(AppleMusicScrapedData data)
         {
             log.Debug($"https://music.apple.com/{AMRegion.ToLower()}/search?term={data.GetSearchString()}");
@@ -95,14 +92,13 @@ namespace AMDiscordRPC
                 if (AMRequest.IsSuccessStatusCode)
                 {
                     string DOMasAString = await AMRequest.Content.ReadAsStringAsync();
-                    IHtmlDocument document = parser.ParseDocument(DOMasAString);
-                   
-                    // These can be simplified later but it works rn. ALSO ALSO SOMEHOW 2 CHECKS ISNT ENOUGH FOR SOME CASES BUT IM NOT GONNA COVER ALL CASES ATLEAST NOW
+                    IElement document = parser.ParseDocument(DOMasAString).DocumentElement;
+                    string[] artistData = document.GetArtist(data);
                     SQLSongResponse songData = new SQLSongResponse(
-                            new SQLCoverData(0, document.DocumentElement.QuerySelectorAll("div.track-lockup__artwork-wrapper > div > picture > source")[1].GetAttribute("srcset").Split(',')[1].Split(' ')[0], null, null, null),
-                            new SQLAlbumData(0, data.AlbumName, (document.DocumentElement.QuerySelectorAll("a.product-lockup__link")[0].ParentElement.ParentElement.ParentElement.QuerySelectorAll("div.product-lockup__content > div > div > div > span > a")[0].TextContent == data.AlbumName) ? document.DocumentElement.QuerySelectorAll("a.product-lockup__link")[0].GetAttribute("href") : (document.DocumentElement.QuerySelectorAll("a.product-lockup__link")[1].ParentElement.ParentElement.ParentElement.QuerySelectorAll("div.product-lockup__content > div > div > div > span > a")[0].TextContent == data.AlbumName) ? document.DocumentElement.QuerySelectorAll("a.product-lockup__link")[1].GetAttribute("href") : document.DocumentElement.QuerySelectorAll("a.product-lockup__link")[0].GetAttribute("href"), data.Type == SecondaryType.Single, 0, 0),
-                            new SQLArtistData(0, data.ArtistName, document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > span > a")[0].GetAttribute("href"), (document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > span > a")[0].GetAttribute("href") == document.DocumentElement.QuerySelectorAll("div.artwork")[0].ParentElement.ParentElement.GetAttribute("href")) ? document.DocumentElement.QuerySelectorAll("div.artwork > div > picture > source")[0].GetAttribute("srcset").Split(',')[1].Split(' ')[0].Replace("webp", "jpg") : await AsyncArtistProfileFetch(document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > span > a")[0].GetAttribute("href"))),
-                            new SQLSongData(data.SongName, (document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > a")[0].TextContent == data.SongName) ? document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > a")[0].GetAttribute("href") : (document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > a")[1].TextContent == data.SongName) ? document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > a")[1].GetAttribute("href") : document.DocumentElement.QuerySelectorAll("div.track-lockup__clamp-wrapper > a")[0].GetAttribute("href"), 0, 0)
+                            new SQLCoverData(0, document.GetCover(data), null, null, null),
+                            new SQLAlbumData(0, data.AlbumName, document.GetAlbum(data), data.Type == SecondaryType.Single, 0, 0),
+                            new SQLArtistData(0, data.ArtistName, artistData[0], artistData[1]),
+                            new SQLSongData(data.SongName, document.GetSong(data), 0, 0)
                     );
 
                     InsertNew(songData);

@@ -94,18 +94,18 @@ namespace AMDiscordRPC
                 {
                     IntPtr lyricsScreenHandler = (IntPtr)lyricScreenWindow.Properties.NativeWindowHandle;
                     Screen lyricsScreenHandlerCurrentMonitor = Screen.FromHandle(lyricsScreenHandler);
-                    long style = GetWindowLongPtrA(lyricsScreenHandler, (int) GWLP.STYLE);
-                    style &= ~((long) WS.CAPTION | (long) WS.THICKFRAME);
-                    SetWindowLongPtrA(lyricsScreenHandler, (int) GWLP.STYLE, style);
+                    long style = GetWindowLongPtrA(lyricsScreenHandler, (int)GWLP.STYLE);
+                    style &= ~((long)WS.CAPTION | (long)WS.THICKFRAME);
+                    SetWindowLongPtrA(lyricsScreenHandler, (int)GWLP.STYLE, style);
 
-                    long exStyle = GetWindowLongPtrA(lyricsScreenHandler, (int) GWLP.EXSTYLE);
-                    exStyle &= ~((long) WS_EX.DLGMODALFRAME | (long) WS_EX.CLIENTEDGE | (long) WS_EX.STATICEDGE);
-                    SetWindowLongPtrA(lyricsScreenHandler, (int) GWLP.EXSTYLE, exStyle);
+                    long exStyle = GetWindowLongPtrA(lyricsScreenHandler, (int)GWLP.EXSTYLE);
+                    exStyle &= ~((long)WS_EX.DLGMODALFRAME | (long)WS_EX.CLIENTEDGE | (long)WS_EX.STATICEDGE);
+                    SetWindowLongPtrA(lyricsScreenHandler, (int)GWLP.EXSTYLE, exStyle);
 
-                    SetWindowPos(lyricsScreenHandler, (int) HWND.TOPMOST, lyricsScreenHandlerCurrentMonitor.Bounds.Left,
+                    SetWindowPos(lyricsScreenHandler, (int)HWND.TOPMOST, lyricsScreenHandlerCurrentMonitor.Bounds.Left,
                         lyricsScreenHandlerCurrentMonitor.Bounds.Top, lyricsScreenHandlerCurrentMonitor.Bounds.Width,
                         lyricsScreenHandlerCurrentMonitor.Bounds.Height,
-                        (uint) SWP.NOOWNERZORDER | (uint) SWP.FRAMECHANGED | (uint) SWP.SHOWWINDOW);
+                        (uint)SWP.NOOWNERZORDER | (uint)SWP.FRAMECHANGED | (uint)SWP.SHOWWINDOW);
                 }
             }
         }

@@ -1,11 +1,6 @@
-﻿using Amazon.Runtime.Endpoints;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using Newtonsoft.Json;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using static AMDiscordRPC.Globals;
 
@@ -27,7 +22,7 @@ namespace AMDiscordRPC
             Response deserialized = JsonConvert.DeserializeObject<Response>(await response.Content.ReadAsStringAsync());
             if (deserialized.result.status == "active")
                 log.Info("Token valid and active");
-            else 
+            else
                 log.Error("Token is not valid.");
         }
 
