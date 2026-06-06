@@ -43,6 +43,7 @@ namespace AMDiscordRPC
         public static SQLRPCResponse httpRes = new SQLRPCResponse();
         public static string ffmpegPath;
         public static S3_Creds S3_Credentials;
+        public static AudioFormat format = AudioFormat.AAC;
         private static List<string> newMatchesArr;
         public static S3ConnectionStatus S3Status = S3ConnectionStatus.Disconnected;
         public static string AMRegion;
@@ -589,9 +590,7 @@ namespace AMDiscordRPC
                 foreach (IElement innerElement in element.QuerySelectorAll("div.ellipse-lockup-wrapper"))
                 {
                     string title = innerElement.QuerySelector("h3.title").TextContent;
-                    log.Debug(title);
-                    log.Debug(data.Artists.Contains(title));
-                    if (returnData[0] == null && data.Artists.Contains(title))
+                    if (data.Artists[0].Equals(title))
                     {
                         returnData[0] = innerElement.QuerySelector("a.click-action").GetAttribute("href");
                         returnData[1] = innerElement.QuerySelector("source[type=\"image/jpeg\"]").GetAttribute("srcset")
@@ -599,22 +598,30 @@ namespace AMDiscordRPC
                         returnData[2] = data.Artists[data.Artists.IndexOf(title)];
                         return returnData;
                     }
-                    else
+                    else if (returnData[0] == null && data.Artists.Contains(title))
                     {
-                        foreach (IElement slowElement in element.QuerySelectorAll(@"ul.track-lockup__content"))
+                        returnData[0] = innerElement.QuerySelector("a.click-action").GetAttribute("href");
+                        returnData[1] = innerElement.QuerySelector("source[type=\"image/jpeg\"]").GetAttribute("srcset")
+                            .Split(' ')[0];
+                        returnData[2] = data.Artists[data.Artists.IndexOf(title)];
+                    }
+                }
+                if (returnData[0] == null)
+                {
+                    foreach (IElement slowElement in element.QuerySelectorAll(@"ul.track-lockup__content"))
+                    {
+                        IHtmlCollection<IElement> texts = slowElement.QuerySelectorAll(@"div.track-lockup__clamp-wrapper");
+                        if (texts[0].NormalizedText() == data.SongName &&
+                            data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText()))
                         {
-                            IHtmlCollection<IElement> texts = slowElement.QuerySelectorAll(@"div.track-lockup__clamp-wrapper");
-                            if (texts[0].NormalizedText() == data.SongName &&
-                                data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText()))
-                            {
-                                returnData[0] = texts[1].QuerySelector("a").GetAttribute("href");
-                                returnData[1] = AsyncArtistProfileFetch(returnData[0]).Result;
-                                returnData[2] = data.Artists[data.Artists.IndexOf(texts[1].QuerySelector("span").NormalizedText())];
-                                return returnData;
-                            }
+                            returnData[0] = texts[1].QuerySelector("a").GetAttribute("href");
+                            returnData[1] = AsyncArtistProfileFetch(returnData[0]).Result;
+                            returnData[2] = data.Artists[data.Artists.IndexOf(texts[1].QuerySelector("span").NormalizedText())];
+                            return returnData;
                         }
                     }
                 }
+                return (returnData[0] == null) ? null : returnData;
             }
             catch (Exception e)
             {
@@ -650,19 +657,32 @@ namespace AMDiscordRPC
             return node.TextContent.Replace("  ", " ").Trim();
         }
         
-        public static String GetSong(this IElement element, AppleMusicScrapedData data)
+        public static String GetSong(this IElement element, AppleMusicScrapedData data, string cover)
         {
             try
             {
-                foreach (IElement innerElement in element.QuerySelectorAll(@"ul.track-lockup__content"))
+                string poppedCover = String.Join("/", cover.Split('/').Take(cover.Split('/').Length - 1));
+                string foundSong = null;
+                
+                foreach (IElement innerElement in element.QuerySelectorAll(@"div.track-lockup"))
                 {
                     IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll(@"div.track-lockup__clamp-wrapper");
+                    string coverURL = innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
+                        .GetAttribute("srcset")
+                        .Split(',')[1].Split(' ')[0];
                     if (texts[0].NormalizedText() == data.SongName &&
-                        data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText()))
+                        data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText())
+                        && coverURL.Contains(poppedCover))
                     {
                         return texts[0].QuerySelector("a").GetAttribute("href");
                     }
+                    else if (texts[0].NormalizedText() == data.SongName &&
+                             data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText()))
+                    {
+                        foundSong = texts[0].QuerySelector("a").GetAttribute("href");
+                    }
                 }
+                return foundSong;
             }
             catch (Exception e)
             {
@@ -675,6 +695,31 @@ namespace AMDiscordRPC
         {
             try
             {
+                string foundCover = null;
+                foreach (IElement innerElement in element.QuerySelector(@"div[aria-label=""Albums""]")
+                             .QuerySelectorAll("div > div > section > div > ul > li"))
+                {
+                    IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll("span.multiline-clamp__text > a");
+                    if (texts[0].NormalizedText().Equals(data.AlbumName) &&
+                        data.Artists.Contains(texts[1].NormalizedText()))
+                    {
+                        return innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
+                            .GetAttribute("srcset")
+                            .Split(',')[1].Split(' ')[0];
+                    }
+                    else if (texts[0].NormalizedText().Contains(data.AlbumName) &&
+                             data.Artists.Contains(texts[1].NormalizedText()))
+                    {
+                        return innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
+                            .GetAttribute("srcset")
+                            .Split(',')[1].Split(' ')[0];
+                    }
+                }
+
+                if (foundCover != null)
+                {
+                    return foundCover;
+                }
                 foreach (IElement innerElement in element.QuerySelectorAll("div.track-lockup"))
                 {
                     if (data.SongName.Contains(innerElement.QuerySelector("ul > li > div > a").NormalizedText()) &&

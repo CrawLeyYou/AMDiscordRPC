@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 using static AMDiscordRPC.Globals;
+using static AMDiscordRPC.Discord;
 
 namespace AMDiscordRPC.UIComponents
 {
@@ -27,6 +28,7 @@ namespace AMDiscordRPC.UIComponents
                 Database.ExecuteNonQueryCommand($"INSERT INTO clientSettings (smallImage) VALUES ({smallImage.SelectedIndex})");
             else
                 Database.ExecuteNonQueryCommand($"UPDATE clientSettings SET (smallImage) = ({smallImage.SelectedIndex})");
+            ChangeSmallImage(SelectedSmallImage);
         }
     }
 }

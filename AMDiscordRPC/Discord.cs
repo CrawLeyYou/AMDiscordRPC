@@ -49,6 +49,33 @@ namespace AMDiscordRPC
             });
         }
 
+        public static void ChangeSmallImage(SmallImage x)
+        {
+            switch (x)
+            {
+                case SmallImage.None:
+                    oldData.Assets.SmallImageKey = null;
+                    client.SetPresence(oldData);
+                    break;
+                case SmallImage.LossDolby:
+                    oldData.Assets.SmallImageKey = (format == AudioFormat.Lossless) ? "lossless" :
+                        (format == AudioFormat.Dolby_Atmos || format == AudioFormat.Dolby_Audio) ? "dolbysimplified" :
+                        null;
+                    oldData.Assets.SmallImageText = (format == AudioFormat.Lossless) ? "Lossless" :
+                        (format == AudioFormat.Dolby_Atmos) ? "Dolby Atmos" :
+                        (format == AudioFormat.Dolby_Audio) ? "Dolby Audio" : null;
+                    oldData.Assets.SmallImageUrl = null;
+                    client.SetPresence(oldData);
+                    break;
+                case SmallImage.Artist:
+                    oldData.Assets.SmallImageKey = httpRes.artistProfileSource;
+                    oldData.Assets.SmallImageText = oldData.State;
+                    oldData.Assets.SmallImageUrl = oldData.StateUrl;
+                    client.SetPresence(oldData);
+                    break;
+            }
+        }
+        
         private static async Task AsyncSetButton(SongData x)
         {
             SQLRPCResponse resp = await GetCover(new AppleMusicScrapedData(

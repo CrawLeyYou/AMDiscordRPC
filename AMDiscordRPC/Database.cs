@@ -257,6 +257,30 @@ namespace AMDiscordRPC
             return null;
         }
 
+        public static string GetIfAlbumSavedBeforeAndHasAnimatedCover(string albumURL)
+        {
+            string cmd = @"
+            SELECT 
+                isAnimated, animatedURL 
+            FROM coverTableNew 
+                INNER JOIN albumTable on albumTable.coverID = coverTableNew.coverID
+            WHERE albumTable.albumURL = @albumURL
+            LIMIT 1;
+            ";
+            using (SQLiteDataReader reader = ExecuteReaderCommand(cmd, new[] { new SQLiteParameter("@albumURL", albumURL) }))
+            {
+                if (!reader.HasRows) return null;
+                while (reader.Read())
+                {
+                    if ((reader.IsDBNull(0) ? null : reader.GetBoolean(0)) == true)
+                        return reader.IsDBNull(1) ? null : reader.GetString(1);
+                    else
+                        return null;
+                }
+            }
+            return null;
+        }
+        
         private static void CheckColumns()
         {
             foreach (var table in sqlMap.Keys)

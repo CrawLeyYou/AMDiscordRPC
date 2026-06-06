@@ -94,11 +94,14 @@ namespace AMDiscordRPC
                     string DOMasAString = await AMRequest.Content.ReadAsStringAsync();
                     IElement document = parser.ParseDocument(DOMasAString).DocumentElement;
                     string[] artistData = document.GetArtist(data);
+                    string albumData = document.GetAlbum(data);
+                    string? animated = GetIfAlbumSavedBeforeAndHasAnimatedCover(albumData);
+                    string cover = document.GetCover(data);
                     SQLSongResponse songData = new SQLSongResponse(
-                            new SQLCoverData(0, document.GetCover(data), null, null, null),
-                            new SQLAlbumData(0, data.AlbumName, document.GetAlbum(data), data.Type == SecondaryType.Single, 0, 0),
+                            new SQLCoverData(0, cover, (animated != null) ? true : null, null, animated),
+                            new SQLAlbumData(0, data.AlbumName, albumData, data.Type == SecondaryType.Single, 0, 0),
                             new SQLArtistData(0, artistData[2], artistData[0], artistData[1]),
-                            new SQLSongData(data.SongName, document.GetSong(data), 0, 0)
+                            new SQLSongData(data.SongName, document.GetSong(data, cover), 0, 0)
                     );
 
                     InsertNew(songData);
@@ -160,7 +163,7 @@ namespace AMDiscordRPC
                     if (songData == null) return new SQLRPCResponse();
                     return new SQLRPCResponse
                     {
-                        coverURL = songData.cover.staticCoverURL,
+                        coverURL = (songData.cover.isAnimated == true) ? songData.cover.animatedURL : songData.cover.staticCoverURL,
                         artistRedirURL = songData.artist.artistRedirURL,
                         artistProfileSource = songData.artist.artistProfileSource,
                         albumURL = songData.album.albumURL,
@@ -174,7 +177,7 @@ namespace AMDiscordRPC
                 if (songData == null) return new SQLRPCResponse();
                 return new SQLRPCResponse
                 {
-                    coverURL = songData.cover.staticCoverURL,
+                    coverURL = (songData.cover.isAnimated == true) ? songData.cover.animatedURL : songData.cover.staticCoverURL,
                     artistRedirURL = songData.artist.artistRedirURL,
                     artistProfileSource = songData.artist.artistProfileSource,
                     albumURL = songData.album.albumURL,

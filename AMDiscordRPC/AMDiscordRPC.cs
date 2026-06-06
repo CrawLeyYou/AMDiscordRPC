@@ -135,7 +135,6 @@ namespace AMDiscordRPC
                     string previousArtistAlbum = string.Empty;
                     string lastFetchedArtistAlbum = string.Empty;
                     string lastFetchedSong = string.Empty;
-                    AudioFormat format = AudioFormat.AAC;
                     bool resetStatus = false;
                     double oldValue = 0;
 
