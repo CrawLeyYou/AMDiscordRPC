@@ -30,7 +30,7 @@ namespace AMDiscordRPC
                         SQLSongResponse songData = new SQLSongResponse(
                             new SQLCoverData(0, imageRes["results"][0]["artworkUrl100"].ToString(), null, null, null),
                             new SQLAlbumData(0, data.AlbumName, imageRes["results"][0]["trackViewUrl"].ToString().Split(new string[] { "?i=" }, StringSplitOptions.None)[0], data.Type == SecondaryType.Single, 0, 0),
-                            new SQLArtistData(0, data.ArtistName, imageRes["results"][0]["artistViewUrl"].ToString().Split(new string[] { "?uo=" }, StringSplitOptions.None)[0], await AsyncArtistProfileFetch(imageRes["results"][0]["artistViewUrl"].ToString().Split(new string[] { "?uo=" }, StringSplitOptions.None)[0])),
+                            new SQLArtistData(0, data.Artists[0], imageRes["results"][0]["artistViewUrl"].ToString().Split(new string[] { "?uo=" }, StringSplitOptions.None)[0], await AsyncArtistProfileFetch(imageRes["results"][0]["artistViewUrl"].ToString().Split(new string[] { "?uo=" }, StringSplitOptions.None)[0])),
                             new SQLSongData(data.SongName, imageRes["results"][0]["trackViewUrl"].ToString().Split(new string[] { "&uo=" }, StringSplitOptions.None)[0], 0, 0)
                         );
                         InsertNew(songData);
@@ -97,7 +97,7 @@ namespace AMDiscordRPC
                     SQLSongResponse songData = new SQLSongResponse(
                             new SQLCoverData(0, document.GetCover(data), null, null, null),
                             new SQLAlbumData(0, data.AlbumName, document.GetAlbum(data), data.Type == SecondaryType.Single, 0, 0),
-                            new SQLArtistData(0, data.ArtistName, artistData[0], artistData[1]),
+                            new SQLArtistData(0, artistData[2], artistData[0], artistData[1]),
                             new SQLSongData(data.SongName, document.GetSong(data), 0, 0)
                     );
 
@@ -148,7 +148,7 @@ namespace AMDiscordRPC
         {
             try
             {
-                SQLRPCResponse cover = GetSongFromDB(data.SongName, data.AlbumName, data.ArtistName);
+                SQLRPCResponse cover = GetSongFromDB(data.SongName, data.AlbumName, data.Artists[0]);
                 if (cover != null)
                 {
                     CoverThread = null;

@@ -24,6 +24,7 @@ using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.UI;
+using static AMDiscordRPC.Covers;
 
 namespace AMDiscordRPC
 {
@@ -398,15 +399,15 @@ namespace AMDiscordRPC
 
         public class AppleMusicScrapedData
         {
-            public string ArtistName { get; set; }
+            public string[] Artists { get; set; }
             public string SongName { get; set; }
             public string AlbumName { get; set; }
 
             public SecondaryType? Type { get; set; }
 
-            public AppleMusicScrapedData(string ArtistName = null, string SongName = null, string AlbumName = null, SecondaryType? Type = null)
+            public AppleMusicScrapedData(string Artists = null, string SongName = null, string AlbumName = null, SecondaryType? Type = null)
             {
-                this.ArtistName = ArtistName;
+                this.Artists = Artists.ConvertArtistArray();
                 this.SongName = SongName;
                 this.AlbumName = AlbumName;
                 this.Type = Type;
@@ -414,7 +415,7 @@ namespace AMDiscordRPC
 
             public string GetSearchString()
             {
-                return Uri.EscapeDataString($"{SongName} {ArtistName} — {AlbumName} - {Type.ToString()}");
+                return Uri.EscapeDataString($"{SongName} {String.Join(", ", Artists)} — {AlbumName} - {Type.ToString()}");
             }
         }
 
@@ -566,39 +567,80 @@ namespace AMDiscordRPC
             return str.Substring(0, str.Length - count);
         }
 
+        public static String[] ConvertArtistArray(this String str)
+        {
+            List<string> extractedValues = new List<string>();
+            foreach (string value in str.Split(new string[] { ", " }, StringSplitOptions.None))
+            {
+                if (value.Contains(" & "))
+                {
+                    extractedValues.AddRange(value.Split(new string[] { " & " }, StringSplitOptions.None));
+                }
+                else extractedValues.Add(value);
+            }
+            return extractedValues.ToArray();
+        }
+        
         public static String[] GetArtist(this IElement element, AppleMusicScrapedData data)
         {
-            string[] returnData = new string[2];
-            foreach (IElement innerElement in element.QuerySelectorAll("div.ellipse-lockup-wrapper"))
+            try
             {
-                string title = innerElement.QuerySelector("h3.title").TextContent;
-                if (data.ArtistName == title)
+                string[] returnData = new string[3];
+                foreach (IElement innerElement in element.QuerySelectorAll("div.ellipse-lockup-wrapper"))
                 {
-                    returnData[0] = innerElement.QuerySelector("a.click-action").GetAttribute("href");
-                    returnData[1] = innerElement.QuerySelector("source[type=\"image/jpeg\"]").GetAttribute("srcset")
-                        .Split(' ')[0];
-                    return returnData;
-                }
-                else if (returnData[0] == null && data.ArtistName.Contains(title))
-                {
-                    returnData[0] = innerElement.QuerySelector("a.click-action").GetAttribute("href");
-                    returnData[1] = innerElement.QuerySelector("source[type=\"image/jpeg\"]").GetAttribute("srcset")
-                        .Split(' ')[0];
+                    string title = innerElement.QuerySelector("h3.title").TextContent;
+                    log.Debug(title);
+                    log.Debug(data.Artists.Contains(title));
+                    if (returnData[0] == null && data.Artists.Contains(title))
+                    {
+                        returnData[0] = innerElement.QuerySelector("a.click-action").GetAttribute("href");
+                        returnData[1] = innerElement.QuerySelector("source[type=\"image/jpeg\"]").GetAttribute("srcset")
+                            .Split(' ')[0];
+                        returnData[2] = data.Artists[data.Artists.IndexOf(title)];
+                        return returnData;
+                    }
+                    else
+                    {
+                        foreach (IElement slowElement in element.QuerySelectorAll(@"ul.track-lockup__content"))
+                        {
+                            IHtmlCollection<IElement> texts = slowElement.QuerySelectorAll(@"div.track-lockup__clamp-wrapper");
+                            if (texts[0].NormalizedText() == data.SongName &&
+                                data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText()))
+                            {
+                                returnData[0] = texts[1].QuerySelector("a").GetAttribute("href");
+                                returnData[1] = AsyncArtistProfileFetch(returnData[0]).Result;
+                                returnData[2] = data.Artists[data.Artists.IndexOf(texts[1].QuerySelector("span").NormalizedText())];
+                                return returnData;
+                            }
+                        }
+                    }
                 }
             }
-            return (returnData[0] == null) ? null : returnData;
-            
+            catch (Exception e)
+            {
+                log.Error($"Something has changed in Apple Music website that causes this error please report to the developer. GetArtist: {e.Message}");
+            }
+            return null;
         }
         
         public static String GetAlbum(this IElement element, AppleMusicScrapedData data)
         {
-            foreach (IElement innerElement in element.QuerySelector(@"div[aria-label=""Albums""]").QuerySelectorAll("div > div > section > div > ul > li"))
+            try
             {
-                IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll("span.multiline-clamp__text > a");
-                if (texts[0].NormalizedText().Contains(data.AlbumName) && data.ArtistName.Contains(texts[1].NormalizedText()))
+                foreach (IElement innerElement in element.QuerySelector(@"div[aria-label=""Albums""]")
+                             .QuerySelectorAll("div > div > section > div > ul > li"))
                 {
-                    return texts[0].GetAttribute("href");
+                    IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll("span.multiline-clamp__text > a");
+                    if (texts[0].NormalizedText().Contains(data.AlbumName) &&
+                        data.Artists.Contains(texts[1].NormalizedText()))
+                    {
+                        return texts[0].GetAttribute("href");
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                log.Error($"Something has changed in Apple Music website that causes this error please report to the developer. GetAlbum: {e.Message}");
             }
             return null;
         }
@@ -610,27 +652,44 @@ namespace AMDiscordRPC
         
         public static String GetSong(this IElement element, AppleMusicScrapedData data)
         {
-            foreach (IElement innerElement in element.QuerySelectorAll(@"ul.track-lockup__content"))
+            try
             {
-                IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll(@"div.track-lockup__clamp-wrapper");
-                if (texts[0].NormalizedText() == data.SongName && data.ArtistName.Contains(texts[1].QuerySelector("span").NormalizedText()))
+                foreach (IElement innerElement in element.QuerySelectorAll(@"ul.track-lockup__content"))
                 {
-                    return texts[0].QuerySelector("a").GetAttribute("href");
+                    IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll(@"div.track-lockup__clamp-wrapper");
+                    if (texts[0].NormalizedText() == data.SongName &&
+                        data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText()))
+                    {
+                        return texts[0].QuerySelector("a").GetAttribute("href");
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                log.Error($"Something has changed in Apple Music website that causes this error please report to the developer. GetSong: {e.Message}");
             }
             return null;
         }
         
         public static String GetCover(this IElement element, AppleMusicScrapedData data)
         {
-            foreach (IElement innerElement in element.QuerySelectorAll("div.track-lockup"))
+            try
             {
-                if (data.SongName.Contains(innerElement.QuerySelector("ul > li > div > a").NormalizedText()) &&
-                    data.ArtistName.Contains(innerElement.QuerySelector("ul > li > div > span > a > span").NormalizedText()))
+                foreach (IElement innerElement in element.QuerySelectorAll("div.track-lockup"))
                 {
-                    return innerElement.QuerySelectorAll("div > div > div > picture > source")[1].GetAttribute("srcset")
-                        .Split(',')[1].Split(' ')[0];
+                    if (data.SongName.Contains(innerElement.QuerySelector("ul > li > div > a").NormalizedText()) &&
+                        data.Artists.Contains(innerElement.QuerySelector("ul > li > div > span > a > span")
+                            .NormalizedText()))
+                    {
+                        return innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
+                            .GetAttribute("srcset")
+                            .Split(',')[1].Split(' ')[0];
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                log.Error($"Something has changed in Apple Music website that causes this error please report to the developer. GetCover: {e.Message}");
             }
             return null;
         }

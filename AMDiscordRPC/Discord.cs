@@ -51,14 +51,18 @@ namespace AMDiscordRPC
 
         private static async Task AsyncSetButton(SongData x)
         {
-            /*
-            WebSongResponse resp = await GetCover(x.ArtistandAlbumName.Split('—')[1], HttpUtility.UrlEncode(x.ArtistandAlbumName + $" {x.SongName}"));
+            SQLRPCResponse resp = await GetCover(new AppleMusicScrapedData(
+                x.ArtistandAlbumName.Split(new string[] { " — " }, StringSplitOptions.None)[0],
+                x.SongName,
+                x.ArtistandAlbumName.Split(new string[] { " — " }, StringSplitOptions.None)[1],
+                (x.isSingle) ? SecondaryType.Single : (x.IsMV) ? SecondaryType.MV : (x.ArtistandAlbumName.Contains(" - EP") ? SecondaryType.EP : SecondaryType.Album)
+            ));
             oldData.Buttons = new Button[]
             {
-                new Button() { Label = "Listen on Apple Music", Url = (resp.trackURL != null) ? resp.trackURL.Replace("https://", "music://") : "music://music.apple.com/home"}
+                new Button() { Label = "Listen on Apple Music", Url = (resp.songURL != null) ? resp.songURL.Replace("https://", "music://") : "music://music.apple.com/home"}
             };
+            oldData.DetailsUrl = resp.songURL;
             client.SetPresence(oldData);
-                        */
             thread = null;
         }
 
