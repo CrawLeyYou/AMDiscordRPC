@@ -20,37 +20,44 @@ namespace AMDiscordRPC
         private static string oldAlbumnArtist;
         static void Main(string[] args)
         {
+            ConfigureLogger();
+            // SetToken();
             InitRegion();
             CreateUI();
-            ConfigureLogger();
-            InitializeDiscordRPC();
-            AttachToAppleMusic();
+            InitDiscordRPC();
+            AttachToAM();
+            // ListBuckets();
             AMSongDataEvent.SongChanged += async (sender, x) =>
-             {
-                 log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
-                 AMDiscordRPCTray.ChangeSongState($"{x.ArtistandAlbumName.Split('—')[0]} - {x.SongName}");
-                 if (x.ArtistandAlbumName == oldAlbumnArtist && oldData.Assets.LargeImageKey != null)
-                 {
-                     SetPresence(x);
-                 }
-                 else
-                 {
-                     if (httpRes.Equals(new WebSongResponse()) || CoverThread != null)
-                     {
-                         httpRes = await GetCover(x.ArtistandAlbumName.Split('—')[1], Uri.EscapeDataString(x.ArtistandAlbumName + $" {x.SongName}"));
-                         log.Debug($"Set Cover: {((httpRes.artworkURL != null) ? httpRes.artworkURL : null)}");
-                     }
-                     SetPresence(x, httpRes);
-                     oldAlbumnArtist = x.ArtistandAlbumName;
-                 }
-             };
+            {
+                log.Info($"Song: {x.SongName} \\ Artist and Album: {x.ArtistandAlbumName}");
+                AMDiscordRPCTray.ChangeSongState($"{x.ArtistandAlbumName.Split('—')[0]} - {x.SongName}");
+                if (x.ArtistandAlbumName == oldAlbumnArtist && oldData.Assets.LargeImageKey != null)
+                {
+                    SetPresence(x);
+                }
+                else
+                {
+                    if (httpRes.Equals(new SQLRPCResponse()) || CoverThread != null)
+                    {
+                        httpRes = await GetCover(
+                            new AppleMusicScrapedData(
+                                x.ArtistandAlbumName.Split(new string[] { " — " }, StringSplitOptions.None)[0],
+                                x.SongName,
+                                x.ArtistandAlbumName.Split(new string[] { " — " }, StringSplitOptions.None)[1],
+                                (x.isSingle) ? SecondaryType.Single : (x.IsMV) ? SecondaryType.MV : (x.ArtistandAlbumName.Contains(" - EP") ? SecondaryType.EP : SecondaryType.Album)
+                            ));
+                        log.Debug($"Set Cover: {((httpRes.coverURL != null) ? httpRes.coverURL : null)}");
+                    }
+                    SetPresence(x, httpRes);
+                    oldAlbumnArtist = x.ArtistandAlbumName;
+                }
+            };
             CheckDatabaseIntegrity();
-            InitDBCreds();
+            ConfigureFromDB();
             CheckFFmpeg();
             InitS3();
             AMEvent();
         }
-
         static void AMEvent()
         {
             using (var automation = new UIA3Automation())
@@ -88,7 +95,7 @@ namespace AMDiscordRPC
                         {
                             for (var i = 0; i < windows.Length; i++)
                             {
-                                if (windows[i].Name == "Apple Music") window = windows[i];
+                                if (windows[i].Name == "Apple Music" && windows[i].FindFirstChild().Name == "Non Client Input Sink Window") window = windows[i];
                             }
                         }
                         else if (windows.Length == 1)
@@ -127,7 +134,7 @@ namespace AMDiscordRPC
                     string previousSong = string.Empty;
                     string previousArtistAlbum = string.Empty;
                     string lastFetchedArtistAlbum = string.Empty;
-                    AudioFormat format = AudioFormat.AAC;
+                    string lastFetchedSong = string.Empty;
                     bool resetStatus = false;
                     double oldValue = 0;
 
@@ -137,14 +144,14 @@ namespace AMDiscordRPC
                         {
                             try
                             {
-                                var currentSong = listeningInfo[0].Name;
+                                var currentSong = (listeningInfo[0].Properties.Name.IsSupported == true && listeningInfo[0].Name != "Connecting…") ? listeningInfo[0].Name : lastFetchedSong;
                                 var currentArtistAlbum = (listeningInfo[1].Properties.Name.IsSupported == true) ? listeningInfo[1].Name : lastFetchedArtistAlbum;
                                 var dashSplit = currentArtistAlbum.Split('-');
                                 var subractThis = TimeSpan.FromSeconds(slider.AsSlider().Value + 1);
                                 if (oldValue == 0) oldValue = slider.AsSlider().Value;
                                 DateTime currentTime = DateTime.UtcNow;
                                 DateTime startTime = currentTime.Subtract(subractThis);
-                                DateTime endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(subractThis);
+                                DateTime endTime = startTime.AddSeconds(slider.AsSlider().Maximum);
                                 DateTime oldEndTime = DateTime.MinValue;
                                 DateTime oldStartTime = DateTime.MinValue;
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
@@ -172,7 +179,7 @@ namespace AMDiscordRPC
                                     oldValue = slider.AsSlider().Value;
                                 }
 
-                                if (currentArtistAlbum != lastFetchedArtistAlbum)
+                                if (currentArtistAlbum != lastFetchedArtistAlbum || currentSong != lastFetchedSong)
                                 {
                                     if (CoverThread != null)
                                     {
@@ -181,15 +188,22 @@ namespace AMDiscordRPC
                                     }
                                     else log.Debug("Continue");
                                     string idontknowwhatshouldinamethisbutitsaboutalbum = (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray());
-                                    CheckAndInsertAlbum(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1]);
                                     Task t = new Task(async () =>
                                     {
-                                        httpRes = await GetCover(idontknowwhatshouldinamethisbutitsaboutalbum.Split('—')[1], Uri.EscapeDataString((isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()) + $" {currentSong}"));
-                                        log.Debug($"Set Cover: {((httpRes.artworkURL != null) ? httpRes.artworkURL : null)}");
+                                        httpRes = await GetCover(
+                                            new AppleMusicScrapedData(
+                                                idontknowwhatshouldinamethisbutitsaboutalbum.Split(new string[] { " — " }, StringSplitOptions.None)[0],
+                                                currentSong,
+                                                idontknowwhatshouldinamethisbutitsaboutalbum.Split(new string[] { " — " }, StringSplitOptions.None)[1],
+                                                (isSingle) ? SecondaryType.Single : (idontknowwhatshouldinamethisbutitsaboutalbum.Split('—').Length <= 1) ? SecondaryType.MV : (idontknowwhatshouldinamethisbutitsaboutalbum.Contains(" - EP") ? SecondaryType.EP : SecondaryType.Album)
+                                            )
+                                        );
+                                        log.Debug($"Set Cover: {((httpRes.coverURL != null) ? httpRes.coverURL : null)}");
                                     });
                                     CoverThread = t;
                                     t.Start();
                                     lastFetchedArtistAlbum = currentArtistAlbum;
+                                    lastFetchedSong = currentSong;
                                 }
 
                                 if (slider.AsSlider().Maximum != 0 && slider.AsSlider().Value != 0 && endTime != startTime && (currentSong != previousSong || currentArtistAlbum != previousArtistAlbum) && oldEndTime != endTime && oldStartTime != startTime)
@@ -214,11 +228,9 @@ namespace AMDiscordRPC
                                     }
                                     else format = AudioFormat.AAC;
                                     oldValue = 0;
-                                    startTime = currentTime.Subtract(subractThis);
-                                    endTime = currentTime.AddSeconds(slider.AsSlider().Maximum).Subtract(subractThis);
                                     oldStartTime = startTime;
                                     oldEndTime = endTime;
-                                    AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, format));
+                                    AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, format, isSingle));
                                 }
 
                                 if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))
@@ -249,20 +261,20 @@ namespace AMDiscordRPC
                             client.ClearPresence();
                             while (!AMAttached)
                             {
-                                AttachToAppleMusic();
+                                AttachToAM();
                                 Thread.Sleep(1000);
                             }
                             AMEvent();
                         }
                         Thread.Sleep(20);
                     }
-                    if (!AMAttached & AppleMusicProc.HasExited != true)
+                    if (!AMAttached && AppleMusicProc.HasExited != true)
                     {
                         log.Info("Something happened which needs to reattach");
                         client.ClearPresence();
                         while (!AMAttached)
                         {
-                            AttachToAppleMusic();
+                            AttachToAM();
                             Thread.Sleep(1000);
                         }
                         AMEvent();
@@ -272,7 +284,7 @@ namespace AMDiscordRPC
                 {
                     while (!AMAttached)
                     {
-                        AttachToAppleMusic();
+                        AttachToAM();
                         Thread.Sleep(1000);
                     }
                     AMEvent();

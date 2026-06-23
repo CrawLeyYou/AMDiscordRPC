@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -72,13 +73,15 @@ namespace AMDiscordRPC.UIComponents
             }
         }
 
-        private static void PutValues(S3_Creds creds, ShowMode mode = ShowMode.Hide)
+        private void PutValues(S3_Creds creds, ShowMode mode = ShowMode.Hide)
         {
             List<TextBox> Instances = new List<TextBox> { Instance.AccessKeyIDBox, Instance.SecretKeyBox, Instance.EndpointBox, Instance.BucketNameBox, Instance.PublicBucketURLBox };
             List<string> Keys = new List<string>() { creds.accessKey, creds.secretKey, creds.serviceURL, creds.bucketName, creds.bucketURL };
             foreach (var (item, index) in Instances.Select((v, i) => (v, i)))
             {
-                PlaceholderAdorner adorner = Helpers.TextBoxHelper.GetPlaceholderAdorner(item);
+                PlaceholderAdorner adorner = GetPlaceholderAdorner(item);
+                if (Keys[index] == null)
+                    return;
                 item.Text = (mode == ShowMode.Show) ? Keys[index] : new string('*', Keys[index].Length);
                 item.IsEnabled = (mode == ShowMode.Show) ? true : false;
                 if (Keys[index].Length > 0)

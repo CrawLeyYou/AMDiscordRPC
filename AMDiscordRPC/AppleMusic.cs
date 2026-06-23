@@ -6,13 +6,13 @@ namespace AMDiscordRPC
 {
     internal class AppleMusic
     {
-        public static void AttachToAppleMusic()
+        public static void AttachToAM()
         {
             try
             {
                 AppleMusicProc = Application.Attach("AppleMusic.exe");
                 AMAttached = true;
-                log.Info($"Attached to Process Id: {AppleMusicProc.ProcessId}");
+                log.Info($"Attached to PID: {AppleMusicProc.ProcessId}");
             }
             catch (Exception e)
             {

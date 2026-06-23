@@ -18,9 +18,9 @@ jobs:
     - name: Restore NuGet Packages
       run: nuget restore AMDiscordRPC.sln
     - name: Build
-      run: msbuild AMDiscordRPC.sln -property:Configuration=Release -property:platform="x64"
+      run: msbuild AMDiscordRPC.sln -property:Configuration=Debug -property:platform="x64"
     - name: Zip
-      run: powershell Compress-Archive -Path ./AMDiscordRPC/bin/x64/Release -DestinationPath Release.zip
+      run: powershell Compress-Archive -Path ./AMDiscordRPC/bin/x64/Debug -DestinationPath Dev-Release.zip
     - name: Release
       uses: softprops/action-gh-release@v2
       with:
@@ -31,4 +31,4 @@ jobs:
           Don't use this version if you want more stable experience.
         prerelease: true
         files: |
-          Release.zip
+          Dev-Release.zip
