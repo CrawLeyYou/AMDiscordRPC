@@ -9,16 +9,16 @@ namespace AMDiscordRPC
     public class Database
     {
         private static SQLiteConnection sqlite;
+        public static string schemeVersion = "1.0.0"; // SemWer is must.
         public static readonly Dictionary<string, string> sqlMap = new Dictionary<string, string>()
         {
-            {"coverTable", "album TEXT PRIMARY KEY NOT NULL, source TEXT, redirURL TEXT DEFAULT 'https://music.apple.com/home', artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistSource TEXT, animated BOOLEAN CHECK (animated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT" }, // will be replaced
-            {"coverTableNew", "coverID INTEGER PRIMARY KEY AUTOINCREMENT, staticCoverURL TEXT NOT NULL UNIQUE, isAnimated BOOLEAN CHECK (isAnimated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT"},
+            {"coverTable", "coverID INTEGER PRIMARY KEY AUTOINCREMENT, staticCoverURL TEXT NOT NULL UNIQUE, isAnimated BOOLEAN CHECK (isAnimated IN (0,1)) DEFAULT NULL, streamURL TEXT, animatedURL TEXT"},
             {"artistTable", "artistID INTEGER PRIMARY KEY AUTOINCREMENT, artistName TEXT NOT NULL, artistRedirURL TEXT DEFAULT 'https://music.apple.com/home', artistProfileSource TEXT"},
-            {"albumTable", "albumID INTEGER PRIMARY KEY AUTOINCREMENT, albumName TEXT NOT NULL, albumURL TEXT UNIQUE, isSingle BOOLEAN CHECK (isSingle IN (0,1)), coverID INTEGER, artistID INTEGER, FOREIGN KEY (coverID) REFERENCES coverTableNew(coverID), FOREIGN KEY (artistID) REFERENCES artistTable(artistID)"},
+            {"albumTable", "albumID INTEGER PRIMARY KEY AUTOINCREMENT, albumName TEXT NOT NULL, albumURL TEXT UNIQUE, isSingle BOOLEAN CHECK (isSingle IN (0,1)), coverID INTEGER, artistID INTEGER, FOREIGN KEY (coverID) REFERENCES coverTable(coverID), FOREIGN KEY (artistID) REFERENCES artistTable(artistID)"},
             {"songTable", "songTitle TEXT, songURL TEXT UNIQUE, albumID INTEGER, artistID INTEGER, FOREIGN KEY (albumID) REFERENCES albumTable(albumID), FOREIGN KEY (artistID) REFERENCES artistTable(artistID)"},
             {"creds", "S3_accessKey TEXT, S3_secretKey TEXT, S3_serviceURL TEXT, S3_bucketName TEXT, S3_bucketURL TEXT, S3_isSpecificKey BOOLEAN CHECK (S3_isSpecificKey IN (0,1)), FFmpegPath TEXT, LastFMToken TEXT" },
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" },
-            {"clientSettings", "smallImage INTEGER"}
+            {"clientSettings", "smallImage INTEGER, schemeVersion INTEGER"}
         };
 
         private static void InitDatabase()
@@ -44,6 +44,7 @@ namespace AMDiscordRPC
                 try
                 {
                     CheckForeignKeys();
+                    CheckVersionChanges();
                     CheckTables();
                     CheckColumns();
                 }
@@ -73,6 +74,7 @@ namespace AMDiscordRPC
                 }
             }
             CreateIndexes();
+            ExecuteNonQueryCommand($"INSERT INTO clientSettings (smallImage, schemeVersion) VALUES ({SelectedSmallImage}, {schemeVersion.SemanticPack()})");
         }
 
         private static void CreateIndexes()
@@ -136,7 +138,7 @@ namespace AMDiscordRPC
 
         public static void UpdateAlbumCover(string albumURL, SQLCoverData data)
         {
-            int rowsAffected = ExecuteNonQueryCommand($@"UPDATE coverTableNew SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) FROM albumTable WHERE coverTableNew.coverID = albumTable.coverID AND albumURL = @albumURL;", new[] { new SQLiteParameter("@albumURL", albumURL) });
+            int rowsAffected = ExecuteNonQueryCommand($@"UPDATE coverTable SET ({string.Join(", ", data.GetNotNullKeys())}) = ({string.Join(", ", data.GetNotNullValues())}) FROM albumTable WHERE coverTable.coverID = albumTable.coverID AND albumURL = @albumURL;", new[] { new SQLiteParameter("@albumURL", albumURL) });
             if (rowsAffected == 0)
             {
                 log.Warn($"This album is not present in database. Skipping {albumURL}");
@@ -183,11 +185,11 @@ namespace AMDiscordRPC
 
         public static int InsertCover(SQLCoverData data)
         {
-            using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT coverID FROM coverTableNew WHERE staticCoverURL = @staticCoverURL", new[] { new SQLiteParameter("@staticCoverURL", data.staticCoverURL) }))
+            using (SQLiteDataReader reader = ExecuteReaderCommand($"SELECT coverID FROM coverTable WHERE staticCoverURL = @staticCoverURL", new[] { new SQLiteParameter("@staticCoverURL", data.staticCoverURL) }))
             {
                 if (!reader.HasRows)
                 {
-                    return Convert.ToInt32(ExecuteScalarCommand($@"INSERT INTO coverTableNew(staticCoverURL, isAnimated, streamURL, animatedURL) VALUES (@staticCoverURL, @isAnimated, @streamURL, @animatedURL); SELECT last_insert_rowid();", new[] { new SQLiteParameter("@staticCoverURL", data.staticCoverURL), new SQLiteParameter("@isAnimated", data.isAnimated), new SQLiteParameter("@streamURL", data.streamURL), new SQLiteParameter("@animatedURL", data.animatedURL) }));
+                    return Convert.ToInt32(ExecuteScalarCommand($@"INSERT INTO coverTable(staticCoverURL, isAnimated, streamURL, animatedURL) VALUES (@staticCoverURL, @isAnimated, @streamURL, @animatedURL); SELECT last_insert_rowid();", new[] { new SQLiteParameter("@staticCoverURL", data.staticCoverURL), new SQLiteParameter("@isAnimated", data.isAnimated), new SQLiteParameter("@streamURL", data.streamURL), new SQLiteParameter("@animatedURL", data.animatedURL) }));
                 }
                 else
                 {
@@ -225,7 +227,7 @@ namespace AMDiscordRPC
         {
             string cmd = @"
             SELECT
-                IIF(coverTableNew.isAnimated = 1, coverTableNew.animatedURL, coverTableNew.staticCoverURL) as coverURL,
+                IIF(coverTable.isAnimated = 1, coverTable.animatedURL, coverTable.staticCoverURL) as coverURL,
                 artistTable.artistRedirURL as artistRedirURL,
                 artistTable.artistProfileSource as artistProfileSource,
                 albumTable.albumURL,
@@ -233,7 +235,7 @@ namespace AMDiscordRPC
             FROM songTable
                 INNER JOIN albumTable on albumTable.albumID = songTable.albumID
                 INNER JOIN artistTable on artistTable.artistID = albumTable.artistID
-                INNER JOIN coverTableNew on coverTableNew.coverID = albumTable.coverID
+                INNER JOIN coverTable on coverTable.coverID = albumTable.coverID
             WHERE
                 artistTable.artistName = @artist
                 AND songTable.songTitle = @song
@@ -262,8 +264,8 @@ namespace AMDiscordRPC
             string cmd = @"
             SELECT 
                 isAnimated, animatedURL 
-            FROM coverTableNew 
-                INNER JOIN albumTable on albumTable.coverID = coverTableNew.coverID
+            FROM coverTable 
+                INNER JOIN albumTable on albumTable.coverID = coverTable.coverID
             WHERE albumTable.albumURL = @albumURL
             LIMIT 1;
             ";
@@ -328,6 +330,25 @@ namespace AMDiscordRPC
             }
         }
 
+        private static void CheckVersionChanges()
+        {
+            using (object result = ExecuteScalarCommand($"SELECT schemeVersion FROM clientSettings LIMIT 1"))
+            {
+                if (result == null)
+                {
+                    log.Info("Legacy database found migration process starting...");
+                } 
+                else if (result == DBNull.Value)
+                {
+                    log.Error("Database corrupted.");
+                }
+                else
+                {
+                    
+                }
+            }
+        }
+        
         private static Dictionary<string, ColumnInfo> ConvertSQLStringToColumnInfo(string sqlStr)
         {
             Dictionary<string, ColumnInfo> columnsMap = new Dictionary<string, ColumnInfo>();

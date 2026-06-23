@@ -53,7 +53,8 @@ namespace AMDiscordRPC
             "",
             ""
         );
-
+        
+        
         public static void ConfigureLogger()
         {
             using (var stream = assembly.GetManifestResourceStream(typeof(AMDiscordRPC), "log4netconf.xml"))
@@ -147,7 +148,6 @@ namespace AMDiscordRPC
                         ((!dbResp.IsDBNull(5)) ? dbResp.GetBoolean(5) : null));
                 }
             }
-
             SelectedSmallImage = (SmallImage)Convert.ToInt32(ExecuteScalarCommand("SELECT smallImage FROM clientSettings"));
         }
 
@@ -570,6 +570,7 @@ namespace AMDiscordRPC
 
         public static String[] ConvertArtistArray(this String str)
         {
+            // I'll be adding database that has special artists whose nickname includes " & " or ", " in next update (AFTER THE PROJECT TRANSFER TO ORGANIZATION ACCOUNT) 
             List<string> extractedValues = new List<string>();
             foreach (string value in str.Split(new string[] { ", " }, StringSplitOptions.None))
             {
@@ -581,7 +582,25 @@ namespace AMDiscordRPC
             }
             return extractedValues.ToArray();
         }
+
+        public static long? SemanticPack(this string version)
+        {
+            string[] str = version.Split('.');
+            if (str.Length == 3)
+            {
+                return (long.Parse(str[0]) << 32) | (long.Parse(str[1]) << 16) | uint.Parse(str[2]);
+            }
+            return null;
+        }
         
+        public static string SemanticUnpack(this long version)
+        {
+            if (version >= 4294967296)
+            {
+                return $"{version >> 32}.{version >> 16 & 0xFFFF}.{version & 0xFFFF}";
+            }
+            return null;
+        }
         public static String[] GetArtist(this IElement element, AppleMusicScrapedData data)
         {
             try
@@ -611,7 +630,7 @@ namespace AMDiscordRPC
                     foreach (IElement slowElement in element.QuerySelectorAll(@"ul.track-lockup__content"))
                     {
                         IHtmlCollection<IElement> texts = slowElement.QuerySelectorAll(@"div.track-lockup__clamp-wrapper");
-                        if (texts[0].NormalizedText() == data.SongName &&
+                        if (texts[0].NormalizedText().Equals(data.SongName, StringComparison.OrdinalIgnoreCase) &&
                             data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText()))
                         {
                             returnData[0] = texts[1].QuerySelector("a").GetAttribute("href");
@@ -634,16 +653,26 @@ namespace AMDiscordRPC
         {
             try
             {
+                string foundAlbum = null;
                 foreach (IElement innerElement in element.QuerySelector(@"div[aria-label=""Albums""]")
                              .QuerySelectorAll("div > div > section > div > ul > li"))
                 {
                     IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll("span.multiline-clamp__text > a");
-                    if (texts[0].NormalizedText().Contains(data.AlbumName) &&
-                        data.Artists.Contains(texts[1].NormalizedText()))
+                    if (texts.Length > 1)
                     {
-                        return texts[0].GetAttribute("href");
+                        if (texts[0].NormalizedText().Equals(data.AlbumName, StringComparison.OrdinalIgnoreCase) &&
+                            data.Artists.Contains(texts[1].NormalizedText()))
+                        {
+                            return texts[0].GetAttribute("href");
+                        }
+                        else if (texts[0].NormalizedText().Contains(data.AlbumName, StringComparison.OrdinalIgnoreCase) &&
+                                 data.Artists.Contains(texts[1].NormalizedText()))
+                        {
+                            foundAlbum = texts[0].GetAttribute("href");
+                        }
                     }
                 }
+                return foundAlbum;
             }
             catch (Exception e)
             {
@@ -661,7 +690,11 @@ namespace AMDiscordRPC
         {
             try
             {
-                string poppedCover = String.Join("/", cover.Split('/').Take(cover.Split('/').Length - 1));
+                // IDK why but some songs are just impossible to detect without second web request. This ones does it's best to detect within the first request so some songs can be shown under different album.
+                // Example: https://music.apple.com/tr/album/born-again-feat-doja-cat-raye/1794222371?i=1794222374 this exact song is also in this https://music.apple.com/tr/album/born-again-feat-doja-cat-raye/1799777820?i=1799777825 album with exact same cover and name. Since song section doesn't have album data we can't determine if it's the same album without second request.
+                string poppedCover = (cover != null)
+                    ? String.Join("/", cover.Split('/').Take(cover.Split('/').Length - 1))
+                    : null;
                 string foundSong = null;
                 
                 foreach (IElement innerElement in element.QuerySelectorAll(@"div.track-lockup"))
@@ -670,13 +703,13 @@ namespace AMDiscordRPC
                     string coverURL = innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
                         .GetAttribute("srcset")
                         .Split(',')[1].Split(' ')[0];
-                    if (texts[0].NormalizedText() == data.SongName &&
+                    if (texts[0].NormalizedText().Equals(data.SongName, StringComparison.OrdinalIgnoreCase) &&
                         data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText())
                         && coverURL.Contains(poppedCover))
                     {
                         return texts[0].QuerySelector("a").GetAttribute("href");
                     }
-                    else if (texts[0].NormalizedText() == data.SongName &&
+                    else if (texts[0].NormalizedText().Equals(data.SongName, StringComparison.OrdinalIgnoreCase) &&
                              data.Artists.Contains(texts[1].QuerySelector("span").NormalizedText()))
                     {
                         foundSong = texts[0].QuerySelector("a").GetAttribute("href");
@@ -699,23 +732,27 @@ namespace AMDiscordRPC
                 foreach (IElement innerElement in element.QuerySelector(@"div[aria-label=""Albums""]")
                              .QuerySelectorAll("div > div > section > div > ul > li"))
                 {
-                    IHtmlCollection<IElement> texts = innerElement.QuerySelectorAll("span.multiline-clamp__text > a");
-                    if (texts[0].NormalizedText().Equals(data.AlbumName) &&
-                        data.Artists.Contains(texts[1].NormalizedText()))
+                        // This requires its own try-catch because Apple Music's website has invisible albums with no data to load later and it just throws an error when it gets there.
+                    IHtmlCollection<IElement> texts =
+                        innerElement.QuerySelectorAll("span.multiline-clamp__text > a");
+                    if (texts.Length > 1)
                     {
-                        return innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
-                            .GetAttribute("srcset")
-                            .Split(',')[1].Split(' ')[0];
-                    }
-                    else if (texts[0].NormalizedText().Contains(data.AlbumName) &&
-                             data.Artists.Contains(texts[1].NormalizedText()))
-                    {
-                        return innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
-                            .GetAttribute("srcset")
-                            .Split(',')[1].Split(' ')[0];
+                        if (texts[0].NormalizedText().Equals(data.AlbumName, StringComparison.OrdinalIgnoreCase) &&
+                            data.Artists.Contains(texts[1].NormalizedText()))
+                        {
+                            return innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
+                                .GetAttribute("srcset")
+                                .Split(',')[1].Split(' ')[0];
+                        }
+                        else if (texts[0].NormalizedText().Contains(data.AlbumName, StringComparison.OrdinalIgnoreCase) &&
+                                 data.Artists.Contains(texts[1].NormalizedText()))
+                        {
+                            foundCover = innerElement.QuerySelectorAll("div > div > div > picture > source")[1]
+                                .GetAttribute("srcset")
+                                .Split(',')[1].Split(' ')[0];
+                        }
                     }
                 }
-
                 if (foundCover != null)
                 {
                     return foundCover;
