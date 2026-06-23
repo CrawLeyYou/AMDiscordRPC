@@ -330,7 +330,7 @@ namespace AMDiscordRPC
             }
         }
 
-        //
+        /*
         private static void CheckVersionChanges()
         {
             using (object result = ExecuteScalarCommand($"SELECT schemeVersion FROM clientSettings LIMIT 1"))
@@ -349,7 +349,7 @@ namespace AMDiscordRPC
                 }
             }
         }
-        //
+        */
         private static Dictionary<string, ColumnInfo> ConvertSQLStringToColumnInfo(string sqlStr)
         {
             Dictionary<string, ColumnInfo> columnsMap = new Dictionary<string, ColumnInfo>();
