@@ -23,6 +23,7 @@ namespace AMDiscordRPC
             ConfigureLogger();
             // SetToken();
             InitRegion();
+            InitButtons();
             CreateUI();
             InitDiscordRPC();
             AttachToAM();
@@ -117,7 +118,7 @@ namespace AMDiscordRPC
                             if (localizedPlay == null && playButton?.Name != null && playButton?.IsEnabled == false)
                             {
                                 localizedPlay = playButton.Name;
-                                log.Debug($"Localized play found: {playButton.Name}");
+                                localizedStop = pauseButtons.ElementAt(playButtons.ToList().IndexOf(playButton.Name));
                             }
                         }
                         catch (Exception eX)
@@ -157,19 +158,22 @@ namespace AMDiscordRPC
                                 bool isSingle = dashSplit[dashSplit.Length - 1].Contains("Single");
                                 audioBadge = LCDInf.FindFirstChild(cf => cf.ByAutomationId("AudioBadgeButton"));
 
-                                if (!playButton.IsEnabled && playButton?.Name != null && localizedPlay == null)
+                                if (playButton?.Name != null && localizedPlay == null)
                                 {
-                                    log.Debug($"Localized play found: {playButton.Name}");
-                                    localizedPlay = playButton.Name;
+                                    if (playButtons.Contains(playButton?.Name))
+                                    {
+                                        localizedPlay = playButton?.Name;
+                                        localizedStop = pauseButtons.ElementAt(playButtons.ToList().IndexOf(playButton?.Name));
+                                    }
+                                    else if (pauseButtons.Contains(playButton?.Name))
+                                    {
+                                        localizedStop = playButton?.Name;
+                                        localizedPlay = playButtons.ElementAt(pauseButtons.ToList().IndexOf(playButton?.Name));
+                                    }
                                 }
 
                                 if (oldValue <= slider.AsSlider().Value && (slider.AsSlider().Value - oldValue) <= 1 && !resetStatus)
                                 {
-                                    if ((slider.AsSlider().Value - oldValue) == 1 && localizedPlay == null && localizedStop == null)
-                                    {
-                                        localizedStop = playButton.Name;
-                                        log.Debug($"Localized stop found: {localizedStop}");
-                                    }
                                     oldValue = slider.AsSlider().Value;
                                 }
                                 else if (resetStatus == false && slider.AsSlider().Maximum != 0 && oldValue != 0 && currentSong == previousSong && currentArtistAlbum == previousArtistAlbum && startTime != endTime)
@@ -233,9 +237,8 @@ namespace AMDiscordRPC
                                     AMSongDataEvent.ChangeSong(new SongData(currentSong, (isSingle) ? string.Join("-", dashSplit.Take(dashSplit.Length - 1).ToArray()) : string.Join("—", currentArtistAlbum.Split('—').Take(2).ToArray()), currentArtistAlbum.Split('—').Length <= 1, startTime, endTime, format, isSingle));
                                 }
 
-                                if (playButton?.Name != null && (localizedPlay != null && localizedPlay == playButton?.Name || localizedStop != null && localizedStop != playButton?.Name))
+                                if (playButton?.Name != null && localizedPlay == playButton?.Name && !resetStatus)
                                 {
-                                    localizedPlay = playButton.Name;
                                     AMDiscordRPCTray.ChangeSongState("AMDiscordRPC");
                                     client.ClearPresence();
                                     resetStatus = true;

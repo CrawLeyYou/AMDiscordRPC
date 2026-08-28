@@ -18,7 +18,7 @@ namespace AMDiscordRPC
             {"songTable", "songTitle TEXT, songURL TEXT UNIQUE, albumID INTEGER, artistID INTEGER, FOREIGN KEY (albumID) REFERENCES albumTable(albumID), FOREIGN KEY (artistID) REFERENCES artistTable(artistID)"},
             {"creds", "S3_accessKey TEXT, S3_secretKey TEXT, S3_serviceURL TEXT, S3_bucketName TEXT, S3_bucketURL TEXT, S3_isSpecificKey BOOLEAN CHECK (S3_isSpecificKey IN (0,1)), FFmpegPath TEXT, LastFMToken TEXT" },
             {"logs", "timestamp INTEGER, type TEXT, occuredAt TEXT, message TEXT" },
-            {"clientSettings", "smallImage INTEGER, schemeVersion INTEGER"}
+            {"clientSettings", "smallImage INTEGER, schemeVersion INTEGER, artistDBVersion INTEGER"}
         };
 
         private static void InitDatabase()

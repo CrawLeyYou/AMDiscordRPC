@@ -22,6 +22,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Dom;
+using Newtonsoft.Json.Linq;
 using static AMDiscordRPC.Database;
 using static AMDiscordRPC.UI;
 using static AMDiscordRPC.Covers;
@@ -47,13 +48,15 @@ namespace AMDiscordRPC
         private static List<string> newMatchesArr;
         public static S3ConnectionStatus S3Status = S3ConnectionStatus.Disconnected;
         public static string AMRegion;
+        public static readonly string baseOrganizationURL = "https://github.com/Penombra";
         public static SmallImage SelectedSmallImage = SmallImage.LossDolby;
         public static CloudflareTypes.AccountCredentials CfAccountCredentials = new CloudflareTypes.AccountCredentials(
             "",
             "",
             ""
         );
-        
+        public static IEnumerable<string> playButtons;
+        public static IEnumerable<string> pauseButtons;
         
         public static void ConfigureLogger()
         {
@@ -112,6 +115,46 @@ namespace AMDiscordRPC
             }
         }
 
+        public static async void InitButtons()
+        {
+            try
+            {
+                HttpResponseMessage r =
+                    await hclient.GetAsync($"{baseOrganizationURL}/AMScraper/releases/latest");
+                if (r.IsSuccessStatusCode)
+                {
+                    HttpResponseMessage response =
+                        await hclient.GetAsync(
+                            $"{r.RequestMessage.RequestUri}/ButtonValues.json".Replace("tag", "download"));
+                    if (response.IsSuccessStatusCode)
+                    {
+                        JObject values = JObject.Parse(await response.Content.ReadAsStringAsync());
+                        playButtons = values["playButtons"].Values<string>();
+                        pauseButtons = values["pauseButtons"].Values<string>();
+                    }
+                    else
+                    {
+                        Fallback();
+                    }
+                }
+                else
+                {
+                    Fallback();
+                }
+            }
+            catch (Exception e)
+            {
+                Fallback();
+            }
+            void Fallback()
+            {
+                log.Debug("Fallback to local values.");
+                JObject values = JObject.Parse(Properties.Resources.ButtonValues);
+                playButtons = values["playButtons"].Values<string>();
+                pauseButtons = values["pauseButtons"].Values<string>();
+            }
+        }
+        
         public class AMSongDataEvent
         {
             public static event EventHandler<SongData> SongChanged;
